@@ -455,8 +455,12 @@ export const BallCanvas = forwardRef<
         ctx.font = `800 ${fontSize}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.lineWidth = Math.max(2, drawRadius * 0.12);
-        ctx.strokeStyle = "rgba(4,8,20,0.85)";
+        // lineJoin이 기본값(miter)이면 숫자의 뾰족한 모서리(2, 4 등)에서
+        // 뿔처럼 튀어나오는 얼룩이 생긴다. round로 바꾸고 선도 얇게 줄인다.
+        ctx.lineJoin = "round";
+        ctx.miterLimit = 2;
+        ctx.lineWidth = Math.max(1.5, drawRadius * 0.055);
+        ctx.strokeStyle = "rgba(4,8,20,0.75)";
         ctx.strokeText(String(b.rank), b.x, b.y);
         ctx.fillStyle = "#FFFFFF";
         ctx.fillText(String(b.rank), b.x, b.y);
