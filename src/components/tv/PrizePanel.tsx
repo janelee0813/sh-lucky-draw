@@ -25,13 +25,22 @@ export function PrizePanel({
             <div className="text-[13px] font-extrabold tracking-widest text-white">LUCKY DRAW</div>
             <div className="text-[13px] font-extrabold tracking-widest text-sh-cyan">PRIZE STATUS</div>
           </div>
-          <button
-            type="button"
-            onClick={() => router.push("/survey")}
-            className="rounded-full border border-white/15 px-2.5 py-1 text-[9px] font-medium text-white/40 hover:text-white/70"
-          >
-            사용자 화면
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => router.push("/admin")}
+              className="rounded-full border border-white/15 px-2.5 py-1 text-[9px] font-medium text-white/40 hover:text-white/70"
+            >
+              관리자 모드
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/survey")}
+              className="rounded-full border border-white/15 px-2.5 py-1 text-[9px] font-medium text-white/40 hover:text-white/70"
+            >
+              사용자 화면
+            </button>
+          </div>
         </div>
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-5">

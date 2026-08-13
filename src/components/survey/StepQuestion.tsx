@@ -22,7 +22,7 @@ export function StepQuestion({
     >
       <div className="flex flex-col gap-4">
         {question.notice && (
-          <p className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-3 text-[12.5px] leading-relaxed text-neutral-500">
+          <p className="rounded-xl border border-sh-blue/25 border-l-4 border-l-sh-blue bg-sh-blue/5 px-4 py-3.5 text-[15px] font-semibold leading-relaxed text-neutral-700">
             {question.notice}
           </p>
         )}

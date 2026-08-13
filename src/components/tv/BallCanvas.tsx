@@ -17,6 +17,14 @@ const STAGE_CORNER_RADIUS = 40;
 // 충돌 시 과도한 에너지 누적을 막기 위한 속도 상한
 const MAX_BALL_SPEED = 4.8;
 
+// 로봇팔 연출: 마운트 위치(상자 상단 중앙)와, 당첨구슬을 들어올려 보여주는 지점
+const ARM_BASE = { x: (STAGE_LEFT + STAGE_RIGHT) / 2, y: STAGE_TOP - 30 };
+const PRESENT_POINT = { x: (STAGE_LEFT + STAGE_RIGHT) / 2, y: (STAGE_TOP + STAGE_BOTTOM) / 2 - 90 };
+
+const ACCEL_MS = 2000;
+const GRAB_MS = 550;
+const REVEAL_MS = 1300;
+
 const RANK_COLOR: Record<number, { core: string; glow: string }> = {
   1: { core: RANK_COLOR_HEX[1], glow: "rgba(255,255,255,0.9)" },
   2: { core: RANK_COLOR_HEX[2], glow: "rgba(49,231,255,0.85)" },
@@ -39,7 +47,9 @@ interface Ball {
   opacity: number;
 }
 
-type Phase = "idle" | "accelerate" | "converge" | "settle" | "highlight" | "reveal";
+// idle: 평상시 부유 / accelerate: 추첨 시작, 2배속으로 휘저음 / seek: 로봇팔이 당첨 구슬을 찾아 접근
+// grab: 집게로 포착 / reveal: 들어올려 중앙에 전시 (이후 idle로 복귀)
+type Phase = "idle" | "accelerate" | "seek" | "grab" | "reveal";
 
 export type BallCanvasHandle = {
   startDraw: (getWinningRank: () => Promise<number | null>) => void;
@@ -59,6 +69,13 @@ export const BallCanvas = forwardRef<
   const winningRankRef = useRef<number | null>(null);
   const selectedBallIdRef = useRef<string | null>(null);
   const rafRef = useRef<number>(0);
+
+  // 로봇팔 상태
+  const armHeadPosRef = useRef({ ...ARM_BASE });
+  const armAlphaRef = useRef(0);
+  const clawOpenRef = useRef(1);
+  const armTargetIdRef = useRef<string | null>(null);
+  const armPickedAtRef = useRef(0);
 
   // 상품 재고 변화에 따라 Ball 목록을 재구성한다.
   useEffect(() => {
@@ -106,6 +123,10 @@ export const BallCanvas = forwardRef<
       phaseStartRef.current = performance.now();
       winningRankRef.current = null;
       selectedBallIdRef.current = null;
+      armTargetIdRef.current = null;
+      armHeadPosRef.current = { ...ARM_BASE };
+      armAlphaRef.current = 0;
+      clawOpenRef.current = 1;
       ballsRef.current.forEach((b) => {
         b.selected = false;
         b.removing = false;
@@ -127,9 +148,6 @@ export const BallCanvas = forwardRef<
 
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
-
-    const centerX = (STAGE_LEFT + STAGE_RIGHT) / 2;
-    const centerY = (STAGE_TOP + STAGE_BOTTOM) / 2;
 
     function drawStageFrame() {
       const r = STAGE_CORNER_RADIUS;
@@ -203,6 +221,99 @@ export const BallCanvas = forwardRef<
       }
     }
 
+    // 어떤 이유로든(충돌 밀림 등) 구슬이 상자 밖으로 나가지 않도록 매 프레임 강제로 가둔다.
+    function clampToStage(b: Ball) {
+      if (b.x < STAGE_LEFT + b.radius) {
+        b.x = STAGE_LEFT + b.radius;
+        if (b.vx < 0) b.vx *= -1;
+      } else if (b.x > STAGE_RIGHT - b.radius) {
+        b.x = STAGE_RIGHT - b.radius;
+        if (b.vx > 0) b.vx *= -1;
+      }
+      if (b.y < STAGE_TOP + b.radius) {
+        b.y = STAGE_TOP + b.radius;
+        if (b.vy < 0) b.vy *= -1;
+      } else if (b.y > STAGE_BOTTOM - b.radius) {
+        b.y = STAGE_BOTTOM - b.radius;
+        if (b.vy > 0) b.vy *= -1;
+      }
+    }
+
+    function drawArm() {
+      const alpha = armAlphaRef.current;
+      if (alpha < 0.02) return;
+      const head = armHeadPosRef.current;
+      const base = ARM_BASE;
+      const openT = clawOpenRef.current;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      const midX = (base.x + head.x) / 2 + (head.y - base.y) * 0.08;
+      const midY = (base.y + head.y) / 2 - (head.x - base.x) * 0.08;
+
+      ctx.strokeStyle = "rgba(120,170,255,0.9)";
+      ctx.lineWidth = 14;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(base.x, base.y);
+      ctx.quadraticCurveTo(midX, midY, head.x, head.y);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(49,231,255,0.9)";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(base.x, base.y);
+      ctx.quadraticCurveTo(midX, midY, head.x, head.y);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(20,30,60,0.95)";
+      ctx.beginPath();
+      ctx.arc(base.x, base.y, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(49,231,255,0.7)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      const angle = Math.atan2(head.y - base.y, head.x - base.x);
+      const spread = 0.3 + openT * 0.55;
+      const fingerLen = 34;
+      for (const dir of [-1, 1]) {
+        const a = angle + dir * spread;
+        ctx.strokeStyle = "rgba(230,240,255,0.95)";
+        ctx.lineWidth = 8;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(head.x, head.y);
+        ctx.quadraticCurveTo(
+          head.x + Math.cos(a) * fingerLen * 0.55,
+          head.y + Math.sin(a) * fingerLen * 0.55,
+          head.x + Math.cos(a - dir * 0.45) * fingerLen,
+          head.y + Math.sin(a - dir * 0.45) * fingerLen
+        );
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "rgba(230,240,255,0.95)";
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawGrabFlash(elapsed: number) {
+      const t = Math.min(1, elapsed / 350);
+      ctx.save();
+      ctx.globalAlpha = (1 - t) * 0.85;
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(armHeadPosRef.current.x, armHeadPosRef.current.y, 20 + t * 90, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function tick(now: number) {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       drawStageFrame();
@@ -210,88 +321,123 @@ export const BallCanvas = forwardRef<
       const phase = phaseRef.current;
       const elapsed = now - phaseStartRef.current;
 
-      // ---- Phase 전환 로직 (요청사항 21의 8~9초 시퀀스) ----
-      if (phase === "accelerate" && elapsed > 2000) {
-        phaseRef.current = "converge";
+      // ---- Phase 전환 로직 ----
+      if (phase === "accelerate" && elapsed > ACCEL_MS) {
+        phaseRef.current = "seek";
         phaseStartRef.current = now;
-      } else if (phase === "converge" && elapsed > 3000) {
-        phaseRef.current = "settle";
-        phaseStartRef.current = now;
-      } else if (phase === "settle" && elapsed > 2000) {
-        phaseRef.current = "highlight";
-        phaseStartRef.current = now;
-      } else if (phase === "highlight" && elapsed > 1000) {
-        // 결과가 아직 서버에서 오지 않았다면 highlight를 유지하며 대기한다.
-        if (winningRankRef.current !== null) {
+      } else if (phase === "seek") {
+        if (!armTargetIdRef.current && winningRankRef.current !== null) {
           const chosen = pickSelectedBall();
           if (chosen) {
             chosen.selected = true;
             selectedBallIdRef.current = chosen.id;
+            armTargetIdRef.current = chosen.id;
+            armPickedAtRef.current = now;
           }
-          phaseRef.current = "reveal";
-          phaseStartRef.current = now;
         }
-      } else if (phase === "reveal" && elapsed > 1000) {
+        if (armTargetIdRef.current) {
+          const target = balls.find((b) => b.id === armTargetIdRef.current);
+          const dist = target
+            ? Math.hypot(armHeadPosRef.current.x - target.x, armHeadPosRef.current.y - target.y)
+            : 0;
+          if (dist < 36 || now - armPickedAtRef.current > 2500) {
+            phaseRef.current = "grab";
+            phaseStartRef.current = now;
+          }
+        }
+      } else if (phase === "grab" && elapsed > GRAB_MS) {
         if (winningRankRef.current !== null) {
           onRevealReady(winningRankRef.current);
-          phaseRef.current = "idle";
         }
+        phaseRef.current = "reveal";
+        phaseStartRef.current = now;
+      } else if (phase === "reveal" && elapsed > REVEAL_MS) {
+        const releasedId = armTargetIdRef.current;
+        const released = balls.find((b) => b.id === releasedId);
+        if (released) {
+          released.vx = (Math.random() - 0.5) * 2.7;
+          released.vy = (Math.random() - 0.5) * 2.7;
+        }
+        for (const b of balls) {
+          b.opacity = 1;
+          b.selected = false;
+        }
+        armTargetIdRef.current = null;
+        selectedBallIdRef.current = null;
+        armHeadPosRef.current = { ...ARM_BASE };
+        phaseRef.current = "idle";
+        phaseStartRef.current = now;
       }
 
+      // ---- 구슬 이동 ----
       for (const b of balls) {
-        const isSelected = b.id === selectedBallIdRef.current;
+        const isTarget = b.id === armTargetIdRef.current;
 
-        // ---- 움직임 ----
         if (phase === "idle") {
           b.x += b.vx * 2.2;
           b.y += b.vy * 2.2;
-          if (b.x < STAGE_LEFT + b.radius || b.x > STAGE_RIGHT - b.radius) b.vx *= -1;
-          if (b.y < STAGE_TOP + b.radius || b.y > STAGE_BOTTOM - b.radius) b.vy *= -1;
         } else if (phase === "accelerate") {
-          b.x += b.vx * 4;
-          b.y += b.vy * 4;
-          if (b.x < STAGE_LEFT + b.radius || b.x > STAGE_RIGHT - b.radius) b.vx *= -1;
-          if (b.y < STAGE_TOP + b.radius || b.y > STAGE_BOTTOM - b.radius) b.vy *= -1;
-        } else if (phase === "converge") {
-          const dx = centerX - b.x;
-          const dy = centerY - b.y;
-          const dist = Math.max(1, Math.hypot(dx, dy));
-          const pull = elapsed < 1500 ? 0.06 : -0.03; // 몰렸다가 흩어짐
-          b.x += (dx / dist) * pull * dist * 0.02 + Math.sin(now / 200 + b.phaseOffset) * 2;
-          b.y += (dy / dist) * pull * dist * 0.02 + Math.cos(now / 200 + b.phaseOffset) * 2;
-        } else if (phase === "settle" || phase === "highlight") {
+          b.x += b.vx * 8;
+          b.y += b.vy * 8;
+        } else if (phase === "seek") {
           b.x += b.vx * 0.6;
           b.y += b.vy * 0.6;
-          if (b.x < STAGE_LEFT + b.radius || b.x > STAGE_RIGHT - b.radius) b.vx *= -1;
-          if (b.y < STAGE_TOP + b.radius || b.y > STAGE_BOTTOM - b.radius) b.vy *= -1;
-        } else if (phase === "reveal") {
-          if (isSelected) {
-            b.x += (centerX - b.x) * 0.12;
-            b.y += (centerY - b.y) * 0.12;
+        } else if (phase === "grab" || phase === "reveal") {
+          if (isTarget) {
+            b.x = armHeadPosRef.current.x;
+            b.y = armHeadPosRef.current.y;
           } else {
-            b.opacity = Math.max(0, b.opacity - 0.04);
+            b.x += b.vx * 0.4;
+            b.y += b.vy * 0.4;
+            b.opacity = Math.max(0.18, b.opacity - 0.03);
           }
-        } else {
-          // 평상시 Ambient Float
-          b.x += b.vx * 0.5 + Math.sin(now / 1800 + b.phaseOffset) * 0.15;
-          b.y += b.vy * 0.5 + Math.cos(now / 2200 + b.phaseOffset) * 0.15;
-          if (b.x < STAGE_LEFT + b.radius || b.x > STAGE_RIGHT - b.radius) b.vx *= -1;
-          if (b.y < STAGE_TOP + b.radius || b.y > STAGE_BOTTOM - b.radius) b.vy *= -1;
         }
+
+        if (!isTarget) clampToStage(b);
       }
 
-      // ---- 충돌 처리 (reveal 연출 중에는 당첨 구슬의 이동을 방해하지 않도록 제외) ----
-      if (phase !== "reveal") {
+      // ---- 로봇팔 갱신 ----
+      const targetAlpha = phase === "seek" || phase === "grab" || phase === "reveal" ? 1 : 0;
+      armAlphaRef.current += (targetAlpha - armAlphaRef.current) * 0.12;
+
+      if (phase === "seek") {
+        let aimX: number;
+        let aimY: number;
+        if (armTargetIdRef.current) {
+          const target = balls.find((b) => b.id === armTargetIdRef.current);
+          aimX = target ? target.x : ARM_BASE.x;
+          aimY = target ? target.y : ARM_BASE.y;
+        } else {
+          aimX = PRESENT_POINT.x + Math.cos(now / 450) * 150;
+          aimY = PRESENT_POINT.y + 90 + Math.sin(now / 450) * 90;
+        }
+        armHeadPosRef.current.x += (aimX - armHeadPosRef.current.x) * 0.07;
+        armHeadPosRef.current.y += (aimY - armHeadPosRef.current.y) * 0.07;
+      } else if (phase === "reveal") {
+        armHeadPosRef.current.x += (PRESENT_POINT.x - armHeadPosRef.current.x) * 0.06;
+        armHeadPosRef.current.y += (PRESENT_POINT.y - armHeadPosRef.current.y) * 0.06;
+      }
+
+      const targetClawOpen = phase === "grab" || phase === "reveal" ? 0 : 1;
+      clawOpenRef.current += (targetClawOpen - clawOpenRef.current) * 0.15;
+
+      // ---- 충돌 처리 (포획된 당첨 구슬은 제외) ----
+      if (phase === "grab" || phase === "reveal") {
+        resolveCollisions(balls.filter((b) => b.id !== armTargetIdRef.current));
+      } else {
         resolveCollisions(balls);
       }
+      for (const b of balls) {
+        if (b.id !== armTargetIdRef.current) clampToStage(b);
+      }
 
+      // ---- 렌더링 ----
       for (const b of balls) {
         const isSelected = b.id === selectedBallIdRef.current;
         const colors = RANK_COLOR[b.rank] ?? RANK_COLOR[5];
-
-        // ---- 렌더링 ----
         const glowPulse = 0.7 + 0.3 * Math.sin(now / 900 + b.phaseOffset);
-        const drawRadius = isSelected && phase === "reveal" ? b.radius * 1.8 : b.radius;
+        const drawRadius =
+          isSelected && (phase === "grab" || phase === "reveal") ? b.radius * 1.7 : b.radius;
 
         ctx.save();
         ctx.globalAlpha = b.opacity;
@@ -330,6 +476,11 @@ export const BallCanvas = forwardRef<
 
         ctx.restore();
       }
+
+      if (phase === "grab") {
+        drawGrabFlash(elapsed);
+      }
+      drawArm();
 
       rafRef.current = requestAnimationFrame(tick);
     }

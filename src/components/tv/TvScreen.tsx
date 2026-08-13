@@ -169,7 +169,7 @@ export function TvScreen() {
             LUCKY DRAW
           </div>
           <div className="mt-4 text-[10px] font-medium tracking-widest text-white/30">
-            SEOUL HOUSING &amp; COMMUNITIES CORPORATION
+            Seoul Housing &amp; Urban Development Corporation
           </div>
         </div>
 

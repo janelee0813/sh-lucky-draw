@@ -51,4 +51,4 @@ export const RANK_COLOR_HEX: Record<1 | 2 | 3 | 4 | 5, string> = {
 export const DEFAULT_ALLOW_DUPLICATE_PHONE = false;
 
 export const EVENT_NAME = "SH AI EXPO 2026 LUCKY DRAW";
-export const ORG_NAME_EN = "SEOUL HOUSING & COMMUNITIES CORPORATION";
+export const ORG_NAME_EN = "Seoul Housing & Urban Development Corporation";
