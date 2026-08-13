@@ -28,10 +28,11 @@ const CENTER_CLEARANCE =
 const MAX_BALL_SPEED = 4.8;
 
 const SHUFFLE_MULT = 4.4; // idle(2.2)의 약 2배
-const SHUFFLE_MIN_MS = 1500;
-const GROW_MS = 900;
-const POP_MS = 350;
+const SHUFFLE_MIN_MS = 4500;
+const GROW_MS = 4200;
+const POP_MS = 800;
 const MAX_GROW_SCALE = 3.2;
+// 전체 연출 길이(가속 대기 없이) = SHUFFLE_MIN_MS + GROW_MS + POP_MS ≈ 9.5초
 
 const RANK_COLOR: Record<number, { core: string; glow: string }> = {
   1: { core: RANK_COLOR_HEX[1], glow: "rgba(255,255,255,0.9)" },
@@ -41,11 +42,22 @@ const RANK_COLOR: Record<number, { core: string; glow: string }> = {
   5: { core: RANK_COLOR_HEX[5], glow: "rgba(93,107,140,0.5)" },
 };
 
-function growScaleAt(t: number, ballRadius: number) {
-  const growT = Math.pow(Math.min(1, Math.max(0, t)), 1.6);
+// t=0..1 (grow 단계 진행률). elapsedMs를 주면 터지기 직전으로 갈수록 더 빠르고 강하게
+// 떨리는 "긴장감" 트레머를 얹는다. elapsedMs를 생략하면(최종 크기 계산용) 트레머 없이
+// 순수한 목표 배율만 반환한다.
+function growScaleAt(t: number, ballRadius: number, elapsedMs?: number) {
+  const clampedT = Math.min(1, Math.max(0, t));
+  const growT = Math.pow(clampedT, 1.4);
   const desired = 1 + growT * (MAX_GROW_SCALE - 1);
   const maxForBall = Math.max(1, CENTER_CLEARANCE / ballRadius);
-  return Math.min(desired, maxForBall, MAX_GROW_SCALE);
+  const base = Math.min(desired, maxForBall, MAX_GROW_SCALE);
+
+  if (elapsedMs === undefined) return base;
+
+  const freq = 0.0035 + clampedT * 0.012; // 갈수록 빨라지는 떨림
+  const amp = 0.025 + clampedT * 0.1; // 갈수록 강해지는 떨림
+  const tremor = 1 + amp * Math.sin(elapsedMs * freq * Math.PI * 2);
+  return base * tremor;
 }
 
 interface Ball {
@@ -357,7 +369,7 @@ export const BallCanvas = forwardRef<
         for (const b of others) clampSpeed(b);
 
         if (target) {
-          const scale = growScaleAt(elapsed / GROW_MS, target.radius);
+          const scale = growScaleAt(elapsed / GROW_MS, target.radius, elapsed);
           resolveObstacle(others, target.x, target.y, target.radius * scale);
         }
       } else if (phase === "pop") {
@@ -381,7 +393,7 @@ export const BallCanvas = forwardRef<
 
         let drawRadius = b.radius;
         if (isSelected && phase === "grow") {
-          drawRadius = b.radius * growScaleAt(elapsed / GROW_MS, b.radius);
+          drawRadius = b.radius * growScaleAt(elapsed / GROW_MS, b.radius, elapsed);
         }
 
         ctx.save();
