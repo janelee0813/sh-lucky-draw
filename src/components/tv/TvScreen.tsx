@@ -31,12 +31,23 @@ export function TvScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/prizes")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) setPrizes(data.prizes ?? []);
-      });
 
+    function loadPrizes() {
+      fetch("/api/prizes")
+        .then((res) => res.json())
+        .then((data) => {
+          if (!cancelled) setPrizes(data.prizes ?? []);
+        })
+        .catch(() => {});
+    }
+
+    loadPrizes();
+
+    // Realtime 구독이 (네트워크/방화벽 등으로) 조용히 끊기더라도 화면이 계속 오래된 재고
+    // 숫자를 보여주는 일이 없도록, 짧은 주기로 항상 최신 상태를 다시 가져온다.
+    const pollTimer = setInterval(loadPrizes, 5000);
+
+    let removeChannel: (() => void) | null = null;
     try {
       const supabase = getSupabaseBrowserClient();
       const channel = supabase
@@ -54,15 +65,16 @@ export function TvScreen() {
           }
         )
         .subscribe();
-      return () => {
-        cancelled = true;
-        supabase.removeChannel(channel);
-      };
+      removeChannel = () => supabase.removeChannel(channel);
     } catch {
-      return () => {
-        cancelled = true;
-      };
+      removeChannel = null;
     }
+
+    return () => {
+      cancelled = true;
+      clearInterval(pollTimer);
+      removeChannel?.();
+    };
   }, []);
 
   const totalRemaining = prizes.reduce((sum, p) => sum + p.remaining_quantity, 0);
