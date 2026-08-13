@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { StatsCards } from "./StatsCards";
+import { SurveyInsights, type SurveyStats } from "./SurveyInsights";
 import { ParticipantsTable } from "./ParticipantsTable";
 import { PrizesTable } from "./PrizesTable";
 import { SettingsPanel } from "./SettingsPanel";
@@ -18,17 +19,27 @@ const TABS: { key: Tab; label: string }[] = [
 
 export function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("dashboard");
-  const [stats, setStats] = useState<{
-    totalParticipants: number;
-    drawnCount: number;
-    pendingDrawCount: number;
-    remainingPrizes: number;
-  } | null>(null);
+  const [stats, setStats] = useState<
+    | ({
+        totalParticipants: number;
+        drawnCount: number;
+        pendingDrawCount: number;
+        remainingPrizes: number;
+      } & SurveyStats)
+    | null
+  >(null);
 
   useEffect(() => {
-    fetch("/api/admin/stats")
-      .then((res) => res.json())
-      .then(setStats);
+    function loadStats() {
+      fetch("/api/admin/stats")
+        .then((res) => res.json())
+        .then(setStats);
+    }
+    loadStats();
+    // 다른 화면(TV 등)에서 발생하는 참여/추첨을 실시간에 가깝게 반영하기 위해 주기적으로 갱신한다.
+    if (tab !== "dashboard") return;
+    const timer = setInterval(loadStats, 8000);
+    return () => clearInterval(timer);
   }, [tab]);
 
   async function handleLogout() {
@@ -95,6 +106,7 @@ export function AdminDashboard() {
 
           {tab === "dashboard" && (
             <>
+              <SurveyInsights stats={stats} />
               <StatsCards stats={stats} />
               <PrizesTable />
             </>

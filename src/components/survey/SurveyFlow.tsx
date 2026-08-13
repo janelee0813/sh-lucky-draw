@@ -71,6 +71,23 @@ export function SurveyFlow() {
     }, 220);
   }
 
+  function handleBack() {
+    if (phase === "questions") {
+      if (questionIndex > 0) {
+        setQuestionIndex((i) => i - 1);
+      } else {
+        setPhase("intro");
+      }
+    } else if (phase === "info") {
+      setQuestionIndex(SURVEY_QUESTIONS.length - 1);
+      setPhase("questions");
+    } else if (phase === "consent" || phase === "error") {
+      setErrorMessage(null);
+      setExistingTicket(null);
+      setPhase("info");
+    }
+  }
+
   function isInfoValid() {
     const basicsValid =
       info.name.trim().length > 0 &&
@@ -200,8 +217,31 @@ export function SurveyFlow() {
 
   return (
     <div className="flex h-full flex-col px-6 pb-8 pt-8">
-      <div className="mb-8">
-        <ProgressBar step={currentStepNumber()} total={totalSteps} />
+      <div className="mb-8 flex items-center gap-3">
+        {phase !== "submitting" && (
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="이전 단계로"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-neutral-500 transition-transform active:scale-95"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        )}
+        <div className="flex-1">
+          <ProgressBar step={currentStepNumber()} total={totalSteps} />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar">

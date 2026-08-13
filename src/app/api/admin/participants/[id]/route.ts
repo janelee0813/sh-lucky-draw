@@ -27,3 +27,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const unauthorized = requireAdminResponse();
+  if (unauthorized) return unauthorized;
+
+  const supabase = getSupabaseServiceClient();
+  const { error } = await supabase.rpc("admin_delete_participant", { p_id: params.id });
+
+  if (error) {
+    if ((error.message || "").includes("NOT_FOUND")) {
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
+    console.error("delete participant error:", error);
+    return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
