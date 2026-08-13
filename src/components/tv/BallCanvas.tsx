@@ -15,19 +15,23 @@ const STAGE_BOTTOM = CANVAS_HEIGHT - 56;
 const STAGE_CORNER_RADIUS = 40;
 const STAGE_CENTER = { x: (STAGE_LEFT + STAGE_RIGHT) / 2, y: (STAGE_TOP + STAGE_BOTTOM) / 2 };
 
-// 추첨 연출: 하단 중앙의 "구멍"으로 당첨 구슬이 소용돌이치며 빨려 들어갔다가 튀어나온다.
-const HOLE = { x: STAGE_CENTER.x, y: STAGE_BOTTOM - 50 };
-const HOLE_RADIUS = 34;
-const HOLD_POINT = { x: HOLE.x, y: HOLE.y - 90 };
+// 중앙에서 구슬이 부풀어 오를 때 상자 벽에 닿지 않도록 확보된 여유 공간
+const CENTER_CLEARANCE =
+  Math.min(
+    STAGE_CENTER.x - STAGE_LEFT,
+    STAGE_RIGHT - STAGE_CENTER.x,
+    STAGE_CENTER.y - STAGE_TOP,
+    STAGE_BOTTOM - STAGE_CENTER.y
+  ) - 16;
 
 // 충돌 시 과도한 에너지 누적을 막기 위한 속도 상한
 const MAX_BALL_SPEED = 4.8;
 
-const ACCEL_MS = 1800;
-const VORTEX_MIN_MS = 1200;
-const DROP_MS = 900;
-const REVEAL_MS = 1300;
-const POP_MS = 280;
+const SHUFFLE_MULT = 4.4; // idle(2.2)의 약 2배
+const SHUFFLE_MIN_MS = 1500;
+const GROW_MS = 900;
+const POP_MS = 350;
+const MAX_GROW_SCALE = 3.2;
 
 const RANK_COLOR: Record<number, { core: string; glow: string }> = {
   1: { core: RANK_COLOR_HEX[1], glow: "rgba(255,255,255,0.9)" },
@@ -37,11 +41,11 @@ const RANK_COLOR: Record<number, { core: string; glow: string }> = {
   5: { core: RANK_COLOR_HEX[5], glow: "rgba(93,107,140,0.5)" },
 };
 
-function easeOutBack(t: number) {
-  const c1 = 1.70158;
-  const c3 = c1 + 1;
-  const x = Math.min(1, Math.max(0, t));
-  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+function growScaleAt(t: number, ballRadius: number) {
+  const growT = Math.pow(Math.min(1, Math.max(0, t)), 1.6);
+  const desired = 1 + growT * (MAX_GROW_SCALE - 1);
+  const maxForBall = Math.max(1, CENTER_CLEARANCE / ballRadius);
+  return Math.min(desired, maxForBall, MAX_GROW_SCALE);
 }
 
 interface Ball {
@@ -56,29 +60,12 @@ interface Ball {
   selected: boolean;
   removing: boolean;
   opacity: number;
-  // vortex 단계에서만 사용하는 원형 궤도 파라미터 (물리 시뮬레이션이 아닌
-  // 순수 함수형 좌표 계산이라 매 프레임 항상 매끄러운 원을 그린다)
-  orbitRadius: number;
-  orbitAngle: number;
-  orbitSpeed: number;
 }
 
-function orbitMaxRadius(ballRadius: number) {
-  return (
-    Math.min(
-      STAGE_CENTER.x - STAGE_LEFT,
-      STAGE_RIGHT - STAGE_CENTER.x,
-      STAGE_CENTER.y - STAGE_TOP,
-      STAGE_BOTTOM - STAGE_CENTER.y
-    ) -
-    ballRadius -
-    12
-  );
-}
-
-// idle: 평상시 부유 / accelerate: 추첨 시작, 빠르게 휘저음 / vortex: 소용돌이치듯 회전
-// drop: 당첨 구슬이 회전하며 하단 구멍으로 빨려 들어감 / reveal: 구멍에서 튀어나와 중앙에 전시
-type Phase = "idle" | "accelerate" | "vortex" | "drop" | "reveal";
+// idle: 평상시 부유 / shuffle: 응모 클릭, 전체가 2배속으로 빠르게 움직임
+// grow: 당첨 구슬만 중앙에서 멈춰 점점 부풀어 오름(다른 구슬은 계속 빠르게 움직임)
+// pop: 부풀어 오른 구슬이 터지며 당첨화면으로 전환
+type Phase = "idle" | "shuffle" | "grow" | "pop";
 
 export type BallCanvasHandle = {
   startDraw: (getWinningRank: () => Promise<number | null>) => void;
@@ -97,10 +84,8 @@ export const BallCanvas = forwardRef<
   const phaseStartRef = useRef<number>(0);
   const winningRankRef = useRef<number | null>(null);
   const selectedBallIdRef = useRef<string | null>(null);
+  const targetIdRef = useRef<string | null>(null);
   const rafRef = useRef<number>(0);
-
-  const dropTargetIdRef = useRef<string | null>(null);
-  const holdPosRef = useRef({ ...HOLE });
 
   // 상품 재고 변화에 따라 Ball 목록을 재구성한다.
   useEffect(() => {
@@ -135,9 +120,6 @@ export const BallCanvas = forwardRef<
             selected: false,
             removing: false,
             opacity: 1,
-            orbitRadius: 0,
-            orbitAngle: 0,
-            orbitSpeed: 0,
           });
         }
       }
@@ -147,12 +129,11 @@ export const BallCanvas = forwardRef<
 
   useImperativeHandle(ref, () => ({
     startDraw(getWinningRank: () => Promise<number | null>) {
-      phaseRef.current = "accelerate";
+      phaseRef.current = "shuffle";
       phaseStartRef.current = performance.now();
       winningRankRef.current = null;
       selectedBallIdRef.current = null;
-      dropTargetIdRef.current = null;
-      holdPosRef.current = { ...HOLE };
+      targetIdRef.current = null;
       ballsRef.current.forEach((b) => {
         b.selected = false;
         b.removing = false;
@@ -189,35 +170,6 @@ export const BallCanvas = forwardRef<
       ctx.fill();
       ctx.lineWidth = 2;
       ctx.strokeStyle = "rgba(255,255,255,0.16)";
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    function drawHole(now: number, active: boolean) {
-      const pulse = active ? 0.5 + 0.5 * Math.sin(now / 140) : 0.35 + 0.15 * Math.sin(now / 900);
-      ctx.save();
-      const gradient = ctx.createRadialGradient(
-        HOLE.x,
-        HOLE.y,
-        2,
-        HOLE.x,
-        HOLE.y,
-        HOLE_RADIUS * (active ? 2.4 : 1.8)
-      );
-      gradient.addColorStop(0, `rgba(49,231,255,${0.45 + pulse * 0.3})`);
-      gradient.addColorStop(0.55, "rgba(49,231,255,0.12)");
-      gradient.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(HOLE.x, HOLE.y, HOLE_RADIUS * (active ? 2.4 : 1.8), 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "rgba(4,7,18,0.95)";
-      ctx.beginPath();
-      ctx.ellipse(HOLE.x, HOLE.y, HOLE_RADIUS, HOLE_RADIUS * 0.62, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = `rgba(49,231,255,${0.6 + pulse * 0.3})`;
       ctx.stroke();
       ctx.restore();
     }
@@ -268,6 +220,28 @@ export const BallCanvas = forwardRef<
       }
     }
 
+    // 성장 중인 당첨 구슬은 움직이지 않는 장애물로 취급해, 다른 구슬들이 튕겨나가게 한다.
+    function resolveObstacle(moving: Ball[], ox: number, oy: number, obstacleRadius: number) {
+      for (const b of moving) {
+        const dx = b.x - ox;
+        const dy = b.y - oy;
+        const dist = Math.hypot(dx, dy) || 0.0001;
+        const minDist = obstacleRadius + b.radius;
+        if (dist >= minDist) continue;
+
+        const nx = dx / dist;
+        const ny = dy / dist;
+        b.x = ox + nx * minDist;
+        b.y = oy + ny * minDist;
+
+        const dot = b.vx * nx + b.vy * ny;
+        if (dot < 0) {
+          b.vx -= 2 * dot * nx;
+          b.vy -= 2 * dot * ny;
+        }
+      }
+    }
+
     function clampSpeed(b: Ball) {
       const speed = Math.hypot(b.vx, b.vy);
       if (speed > MAX_BALL_SPEED) {
@@ -294,75 +268,71 @@ export const BallCanvas = forwardRef<
       }
     }
 
+    function drawBurst(x: number, y: number, baseRadius: number, t: number) {
+      const ringT = Math.min(1, t);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - ringT) * 0.9;
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(x, y, baseRadius * (1 + ringT * 1.8), 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.globalAlpha = Math.max(0, 1 - ringT * 1.4) * 0.55;
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.beginPath();
+      ctx.arc(x, y, baseRadius * Math.max(0, 1 - ringT * 0.7), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     function tick(now: number) {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       drawStageFrame();
       const balls = ballsRef.current;
       const phase = phaseRef.current;
       const elapsed = now - phaseStartRef.current;
-      drawHole(now, phase === "drop" || phase === "reveal");
 
       // ---- Phase 전환 로직 ----
-      if (phase === "accelerate" && elapsed > ACCEL_MS) {
-        // 각 구슬을 현재 위치에서 이어지는 원형 궤도로 자연스럽게 편입시킨다.
-        for (const b of balls) {
-          const dx = b.x - STAGE_CENTER.x;
-          const dy = b.y - STAGE_CENTER.y;
-          const rawRadius = Math.hypot(dx, dy) || 1;
-          b.orbitRadius = Math.min(rawRadius, Math.max(24, orbitMaxRadius(b.radius)));
-          b.orbitAngle = Math.atan2(dy, dx);
-          b.orbitSpeed = 0.045 + Math.random() * 0.025;
-        }
-        phaseRef.current = "vortex";
-        phaseStartRef.current = now;
-      } else if (phase === "vortex") {
-        if (!dropTargetIdRef.current && winningRankRef.current !== null && elapsed > VORTEX_MIN_MS) {
+      if (phase === "shuffle") {
+        if (!targetIdRef.current && winningRankRef.current !== null && elapsed > SHUFFLE_MIN_MS) {
           const chosen = pickSelectedBall();
           if (chosen) {
             chosen.selected = true;
             selectedBallIdRef.current = chosen.id;
-            dropTargetIdRef.current = chosen.id;
-            phaseRef.current = "drop";
+            targetIdRef.current = chosen.id;
+            phaseRef.current = "grow";
             phaseStartRef.current = now;
           }
         }
-      } else if (phase === "drop") {
-        const target = balls.find((b) => b.id === dropTargetIdRef.current);
-        const dist = target ? Math.hypot(HOLE.x - target.x, HOLE.y - target.y) : 0;
-        if (elapsed > DROP_MS || dist < 16) {
-          if (winningRankRef.current !== null) {
-            onRevealReady(winningRankRef.current);
-          }
-          holdPosRef.current = { ...HOLE };
-          phaseRef.current = "reveal";
-          phaseStartRef.current = now;
+      } else if (phase === "grow" && elapsed > GROW_MS) {
+        if (winningRankRef.current !== null) {
+          onRevealReady(winningRankRef.current);
         }
-      } else if (phase === "reveal" && elapsed > REVEAL_MS) {
-        const releasedId = dropTargetIdRef.current;
+        phaseRef.current = "pop";
+        phaseStartRef.current = now;
+      } else if (phase === "pop" && elapsed > POP_MS) {
+        const releasedId = targetIdRef.current;
         const released = balls.find((b) => b.id === releasedId);
         if (released) {
-          released.x = HOLE.x;
-          released.y = HOLE.y - 20;
+          released.x = STAGE_CENTER.x;
+          released.y = STAGE_CENTER.y;
           released.vx = (Math.random() - 0.5) * 2.7;
-          released.vy = -1.5 - Math.random();
+          released.vy = (Math.random() - 0.5) * 2.7;
         }
         for (const b of balls) {
           b.opacity = 1;
           b.selected = false;
         }
-        dropTargetIdRef.current = null;
+        targetIdRef.current = null;
         selectedBallIdRef.current = null;
         phaseRef.current = "idle";
         phaseStartRef.current = now;
       }
 
       // ---- 구슬 이동 ----
-      // idle/accelerate: 기존처럼 속도+충돌 물리 시뮬레이션을 사용한다.
-      // vortex/drop/reveal: 힘을 누적시키는 물리 대신, 시간에 대한 순수 함수로 좌표를
-      // 직접 계산한다. 그래야 충돌·클램프 등 여러 힘이 겹쳐서 생기는 뚝뚝 끊기거나
-      // 갑자기 방향이 튀는 부자연스러운 움직임 없이 항상 매끄러운 곡선을 그린다.
-      if (phase === "idle" || phase === "accelerate") {
-        const mult = phase === "idle" ? 2.2 : 8;
+      if (phase === "idle" || phase === "shuffle") {
+        const mult = phase === "idle" ? 2.2 : SHUFFLE_MULT;
         for (const b of balls) {
           b.x += b.vx * mult;
           b.y += b.vy * mult;
@@ -370,61 +340,49 @@ export const BallCanvas = forwardRef<
         }
         resolveCollisions(balls);
         for (const b of balls) clampSpeed(b);
-      } else if (phase === "vortex") {
-        for (const b of balls) {
-          b.orbitAngle += b.orbitSpeed;
-          b.x = STAGE_CENTER.x + b.orbitRadius * Math.cos(b.orbitAngle);
-          b.y = STAGE_CENTER.y + b.orbitRadius * Math.sin(b.orbitAngle);
+      } else if (phase === "grow") {
+        const target = balls.find((b) => b.id === targetIdRef.current);
+        const others = balls.filter((b) => b.id !== targetIdRef.current);
+
+        if (target) {
+          target.x += (STAGE_CENTER.x - target.x) * 0.08;
+          target.y += (STAGE_CENTER.y - target.y) * 0.08;
         }
-      } else if (phase === "drop") {
-        const t = Math.min(1, elapsed / DROP_MS);
-        const te = t * t; // ease-in: 갈수록 빠르게 빨려들어간다
-        const originX = STAGE_CENTER.x + (HOLE.x - STAGE_CENTER.x) * te;
-        const originY = STAGE_CENTER.y + (HOLE.y - STAGE_CENTER.y) * te;
-        for (const b of balls) {
-          if (b.id === dropTargetIdRef.current) {
-            b.orbitAngle += b.orbitSpeed * (1 + te * 4);
-            const r = b.orbitRadius * (1 - te);
-            b.x = originX + r * Math.cos(b.orbitAngle);
-            b.y = originY + r * Math.sin(b.orbitAngle);
-            b.opacity = elapsed > DROP_MS - 150 ? Math.max(0, 1 - (elapsed - (DROP_MS - 150)) / 150) : 1;
-          } else {
-            b.orbitAngle += b.orbitSpeed;
-            b.x = STAGE_CENTER.x + b.orbitRadius * Math.cos(b.orbitAngle);
-            b.y = STAGE_CENTER.y + b.orbitRadius * Math.sin(b.orbitAngle);
-            b.opacity = Math.max(0.25, b.opacity - 0.02);
-          }
+        for (const b of others) {
+          b.x += b.vx * SHUFFLE_MULT;
+          b.y += b.vy * SHUFFLE_MULT;
+          clampToStage(b);
         }
-      } else if (phase === "reveal") {
-        for (const b of balls) {
-          if (b.id === dropTargetIdRef.current) {
-            holdPosRef.current.x += (HOLD_POINT.x - holdPosRef.current.x) * 0.07;
-            holdPosRef.current.y += (HOLD_POINT.y - holdPosRef.current.y) * 0.07;
-            b.x = holdPosRef.current.x;
-            b.y = holdPosRef.current.y;
-            b.opacity = Math.min(1, elapsed / 120);
-          } else {
-            b.orbitAngle += b.orbitSpeed;
-            b.x = STAGE_CENTER.x + b.orbitRadius * Math.cos(b.orbitAngle);
-            b.y = STAGE_CENTER.y + b.orbitRadius * Math.sin(b.orbitAngle);
-            b.opacity = Math.max(0.18, b.opacity - 0.02);
-          }
+        resolveCollisions(others);
+        for (const b of others) clampSpeed(b);
+
+        if (target) {
+          const scale = growScaleAt(elapsed / GROW_MS, target.radius);
+          resolveObstacle(others, target.x, target.y, target.radius * scale);
         }
+      } else if (phase === "pop") {
+        const others = balls.filter((b) => b.id !== targetIdRef.current);
+        for (const b of others) {
+          b.x += b.vx * 2.2;
+          b.y += b.vy * 2.2;
+          clampToStage(b);
+        }
+        resolveCollisions(others);
+        for (const b of others) clampSpeed(b);
       }
 
       // ---- 렌더링 ----
       for (const b of balls) {
         const isSelected = b.id === selectedBallIdRef.current;
+        if (isSelected && phase === "pop") continue; // 터지는 연출은 아래에서 별도로 그린다.
+
         const colors = RANK_COLOR[b.rank] ?? RANK_COLOR[5];
         const glowPulse = 0.7 + 0.3 * Math.sin(now / 900 + b.phaseOffset);
 
         let drawRadius = b.radius;
-        if (isSelected && phase === "reveal") {
-          const popT = easeOutBack(elapsed / POP_MS);
-          drawRadius = b.radius * 1.7 * Math.max(0.05, popT);
+        if (isSelected && phase === "grow") {
+          drawRadius = b.radius * growScaleAt(elapsed / GROW_MS, b.radius);
         }
-
-        if (drawRadius <= 0.5) continue;
 
         ctx.save();
         ctx.globalAlpha = b.opacity;
@@ -435,7 +393,7 @@ export const BallCanvas = forwardRef<
           drawRadius * 0.15,
           b.x,
           b.y,
-          drawRadius * (isSelected ? 1.6 : 1.15) * glowPulse
+          drawRadius * (isSelected ? 1.4 : 1.15) * glowPulse
         );
         gradient.addColorStop(0, colors.core);
         gradient.addColorStop(0.55, colors.glow);
@@ -443,7 +401,7 @@ export const BallCanvas = forwardRef<
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, drawRadius * (isSelected ? 1.6 : 1.15) * glowPulse, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, drawRadius * (isSelected ? 1.4 : 1.15) * glowPulse, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = colors.core;
@@ -455,8 +413,6 @@ export const BallCanvas = forwardRef<
         ctx.font = `800 ${fontSize}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        // lineJoin이 기본값(miter)이면 숫자의 뾰족한 모서리(2, 4 등)에서
-        // 뿔처럼 튀어나오는 얼룩이 생긴다. round로 바꾸고 선도 얇게 줄인다.
         ctx.lineJoin = "round";
         ctx.miterLimit = 2;
         ctx.lineWidth = Math.max(1.5, drawRadius * 0.055);
@@ -466,6 +422,14 @@ export const BallCanvas = forwardRef<
         ctx.fillText(String(b.rank), b.x, b.y);
 
         ctx.restore();
+      }
+
+      if (phase === "pop") {
+        const target = balls.find((b) => b.id === targetIdRef.current);
+        if (target) {
+          const finalScale = growScaleAt(1, target.radius);
+          drawBurst(target.x, target.y, target.radius * finalScale, elapsed / POP_MS);
+        }
       }
 
       rafRef.current = requestAnimationFrame(tick);

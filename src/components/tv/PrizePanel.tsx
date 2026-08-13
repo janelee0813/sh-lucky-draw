@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { RANK_COLOR_HEX } from "@/lib/config/settings";
 import type { PublicPrizeStatus } from "@/types/database";
 
@@ -15,8 +14,6 @@ export function PrizePanel({
   drawClosed: boolean;
   onOpenDraw: () => void;
 }) {
-  const router = useRouter();
-
   return (
     <div className="absolute right-0 top-0 flex h-full w-[440px] flex-col justify-between border-l border-white/10 bg-white/[0.03] px-8 py-10 backdrop-blur-sm">
       <div>
@@ -26,20 +23,22 @@ export function PrizePanel({
             <div className="text-[13px] font-extrabold tracking-widest text-sh-cyan">PRIZE STATUS</div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => router.push("/admin")}
+            <a
+              href="/admin"
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-full border border-white/15 px-2.5 py-1 text-[9px] font-medium text-white/40 hover:text-white/70"
             >
               관리자 모드
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/survey")}
+            </a>
+            <a
+              href="/survey"
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-full border border-white/15 px-2.5 py-1 text-[9px] font-medium text-white/40 hover:text-white/70"
             >
               사용자 화면
-            </button>
+            </a>
           </div>
         </div>
 
