@@ -163,7 +163,9 @@ export function TvScreen() {
         <div className="absolute left-16 top-10 z-10">
           <div className="flex items-baseline gap-2.5 whitespace-nowrap">
             <span className="text-[15px] font-extrabold tracking-[0.3em] text-white">SH</span>
-            <span className="text-[13px] font-bold tracking-[0.2em] text-sh-cyan">AI EXPO 2026</span>
+            <span className="text-[13px] font-bold tracking-[0.2em] text-sh-cyan">
+              AI Summit Seoul &amp; Expo
+            </span>
           </div>
           <div className="mt-3 whitespace-nowrap font-display text-[44px] font-black leading-none text-white">
             LUCKY DRAW
