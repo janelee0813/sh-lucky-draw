@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  HQ_LOCATION_OPTIONS,
+  JOB_ROLE_OPTIONS,
+  optionLabel,
+} from "@/lib/config/survey-questions";
 
 type ParticipantRow = {
   id: string;
@@ -8,6 +13,10 @@ type ParticipantRow = {
   created_at: string;
   name: string;
   company: string | null;
+  job_role: string | null;
+  rnd_dept: string | null;
+  hq_location: string | null;
+  hq_location_other: string | null;
   phone: string;
   email: string;
   survey_answer_1: string;
@@ -101,13 +110,15 @@ export function ParticipantsTable() {
       </div>
 
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[1000px] text-left text-[12.5px]">
+        <table className="w-full min-w-[1300px] text-left text-[12.5px]">
           <thead>
             <tr className="border-b border-neutral-100 text-neutral-400">
               <th className="py-2 pr-3 font-semibold">응모번호</th>
               <th className="py-2 pr-3 font-semibold">참여시간</th>
               <th className="py-2 pr-3 font-semibold">이름</th>
               <th className="py-2 pr-3 font-semibold">회사</th>
+              <th className="py-2 pr-3 font-semibold">직무</th>
+              <th className="py-2 pr-3 font-semibold">본사/연구실 위치</th>
               <th className="py-2 pr-3 font-semibold">휴대전화</th>
               <th className="py-2 pr-3 font-semibold">이메일</th>
               <th className="py-2 pr-3 font-semibold">당첨</th>
@@ -117,13 +128,13 @@ export function ParticipantsTable() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-neutral-300">
+                <td colSpan={10} className="py-8 text-center text-neutral-300">
                   불러오는 중...
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-neutral-300">
+                <td colSpan={10} className="py-8 text-center text-neutral-300">
                   참가자가 없습니다.
                 </td>
               </tr>
@@ -143,6 +154,14 @@ export function ParticipantsTable() {
                   </td>
                   <td className="py-2.5 pr-3 text-neutral-700">{r.name}</td>
                   <td className="py-2.5 pr-3 text-neutral-500">{r.company || "-"}</td>
+                  <td className="py-2.5 pr-3 text-neutral-500">
+                    {optionLabel(JOB_ROLE_OPTIONS, r.job_role) || "-"}
+                  </td>
+                  <td className="py-2.5 pr-3 text-neutral-500">
+                    {r.hq_location === "etc"
+                      ? `기타(${r.hq_location_other || "-"})`
+                      : optionLabel(HQ_LOCATION_OPTIONS, r.hq_location) || "-"}
+                  </td>
                   <td className="py-2.5 pr-3 text-neutral-500">{r.phone}</td>
                   <td className="py-2.5 pr-3 text-neutral-500">{r.email}</td>
                   <td className="py-2.5 pr-3">

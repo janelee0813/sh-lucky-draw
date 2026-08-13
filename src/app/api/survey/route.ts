@@ -5,9 +5,15 @@ import { isValidEmail, isValidPhone, normalizePhone } from "@/lib/utils/ticket-n
 
 const bodySchema = z.object({
   name: z.string().trim().min(1).max(50),
-  company: z.string().trim().max(100).optional().nullable(),
   phone: z.string().trim().min(1),
   email: z.string().trim().min(1),
+  company: z.string().trim().min(1).max(100),
+  job_role: z.string().trim().min(1),
+  rnd_dept: z.string().trim().min(1),
+  rnd_dept_name: z.string().trim().max(100).optional().nullable(),
+  rnd_relocation_plan: z.string().trim().optional().nullable(),
+  hq_location: z.string().trim().min(1),
+  hq_location_other: z.string().trim().max(100).optional().nullable(),
   survey_answer_1: z.string().trim().min(1),
   survey_answer_2: z.string().trim().min(1),
   privacy_consent: z.literal(true),
@@ -43,9 +49,15 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase.rpc("submit_survey", {
     p_name: body.name,
-    p_company: body.company || null,
     p_phone: phone,
     p_email: body.email.trim(),
+    p_company: body.company,
+    p_job_role: body.job_role,
+    p_rnd_dept: body.rnd_dept,
+    p_rnd_dept_name: body.rnd_dept_name || null,
+    p_rnd_relocation_plan: body.rnd_relocation_plan || null,
+    p_hq_location: body.hq_location,
+    p_hq_location_other: body.hq_location_other || null,
     p_answer1: body.survey_answer_1,
     p_answer2: body.survey_answer_2,
     p_consent: true,

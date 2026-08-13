@@ -19,6 +19,12 @@ export interface Participant {
   ticket_number: number; // 내부 저장은 숫자, 화면 표시는 0001 형태로 padStart
   name: string;
   company: string | null;
+  job_role: string | null;
+  rnd_dept: string | null;
+  rnd_dept_name: string | null;
+  rnd_relocation_plan: string | null;
+  hq_location: string | null;
+  hq_location_other: string | null;
   phone: string;
   email: string;
   survey_answer_1: string;

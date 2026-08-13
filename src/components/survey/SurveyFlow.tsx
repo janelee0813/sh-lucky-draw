@@ -11,7 +11,18 @@ import { ConsentStep } from "./ConsentStep";
 
 type Phase = "loading" | "closed" | "intro" | "questions" | "info" | "consent" | "submitting" | "error";
 
-const EMPTY_INFO: ParticipantInfo = { name: "", company: "", phone: "", email: "" };
+const EMPTY_INFO: ParticipantInfo = {
+  name: "",
+  phone: "",
+  email: "",
+  company: "",
+  jobRole: "",
+  rndDept: "",
+  rndDeptName: "",
+  rndRelocationPlan: "",
+  hqLocation: "",
+  hqLocationOther: "",
+};
 
 export function SurveyFlow() {
   const router = useRouter();
@@ -61,7 +72,22 @@ export function SurveyFlow() {
   }
 
   function isInfoValid() {
-    return info.name.trim().length > 0 && info.phone.trim().length > 0 && info.email.trim().length > 0;
+    const basicsValid =
+      info.name.trim().length > 0 &&
+      info.phone.trim().length > 0 &&
+      info.email.trim().length > 0 &&
+      info.company.trim().length > 0 &&
+      info.jobRole.length > 0 &&
+      info.rndDept.length > 0 &&
+      info.hqLocation.length > 0;
+
+    const rndValid =
+      info.rndDept !== "has" ||
+      (info.rndDeptName.trim().length > 0 && info.rndRelocationPlan.length > 0);
+
+    const hqValid = info.hqLocation !== "etc" || info.hqLocationOther.trim().length > 0;
+
+    return basicsValid && rndValid && hqValid;
   }
 
   async function handleSubmit() {
@@ -74,9 +100,15 @@ export function SurveyFlow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: info.name.trim(),
-          company: info.company.trim() || null,
           phone: info.phone.trim(),
           email: info.email.trim(),
+          company: info.company.trim(),
+          job_role: info.jobRole,
+          rnd_dept: info.rndDept,
+          rnd_dept_name: info.rndDept === "has" ? info.rndDeptName.trim() : null,
+          rnd_relocation_plan: info.rndDept === "has" ? info.rndRelocationPlan : null,
+          hq_location: info.hqLocation,
+          hq_location_other: info.hqLocation === "etc" ? info.hqLocationOther.trim() : null,
           survey_answer_1: answers.survey_answer_1,
           survey_answer_2: answers.survey_answer_2,
           privacy_consent: true,

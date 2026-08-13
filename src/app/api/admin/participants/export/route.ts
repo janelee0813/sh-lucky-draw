@@ -3,6 +3,13 @@ import * as XLSX from "xlsx";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import { requireAdminResponse } from "@/lib/auth/guard";
 import { formatTicketNumber } from "@/lib/utils/ticket-number";
+import {
+  HQ_LOCATION_OPTIONS,
+  JOB_ROLE_OPTIONS,
+  RND_DEPT_OPTIONS,
+  RND_RELOCATION_OPTIONS,
+  optionLabel,
+} from "@/lib/config/survey-questions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +21,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("participants")
     .select(
-      "ticket_number, created_at, name, company, phone, email, survey_answer_1, survey_answer_2, drawn_at, received, received_at, is_test, prizes(rank, name)"
+      "ticket_number, created_at, name, company, job_role, rnd_dept, rnd_dept_name, rnd_relocation_plan, hq_location, hq_location_other, phone, email, survey_answer_1, survey_answer_2, drawn_at, received, received_at, is_test, prizes(rank, name)"
     )
     .order("ticket_number", { ascending: true });
 
@@ -28,6 +35,14 @@ export async function GET() {
     참여시간: p.created_at ? new Date(p.created_at).toLocaleString("ko-KR") : "",
     이름: p.name,
     회사: p.company ?? "",
+    직무: optionLabel(JOB_ROLE_OPTIONS, p.job_role),
+    "R&D부서보유여부": optionLabel(RND_DEPT_OPTIONS, p.rnd_dept),
+    "R&D부서명": p.rnd_dept_name ?? "",
+    "R&D이전확장계획": optionLabel(RND_RELOCATION_OPTIONS, p.rnd_relocation_plan),
+    본사연구실위치:
+      p.hq_location === "etc"
+        ? `기타 지역(${p.hq_location_other ?? ""})`
+        : optionLabel(HQ_LOCATION_OPTIONS, p.hq_location),
     휴대전화: p.phone,
     이메일: p.email,
     설문1: p.survey_answer_1,
@@ -43,7 +58,8 @@ export async function GET() {
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
   worksheet["!cols"] = [
-    { wch: 10 }, { wch: 20 }, { wch: 12 }, { wch: 18 }, { wch: 15 },
+    { wch: 10 }, { wch: 20 }, { wch: 12 }, { wch: 18 }, { wch: 14 },
+    { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 22 }, { wch: 15 },
     { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 10 }, { wch: 10 },
     { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 20 }, { wch: 10 },
   ];

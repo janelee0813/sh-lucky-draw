@@ -20,9 +20,16 @@ export function StepQuestion({
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="flex flex-col gap-6"
     >
-      <h2 className="text-[22px] leading-[1.4] font-bold text-neutral-900 whitespace-pre-line">
-        {question.title}
-      </h2>
+      <div className="flex flex-col gap-4">
+        {question.notice && (
+          <p className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-3 text-[12.5px] leading-relaxed text-neutral-500">
+            {question.notice}
+          </p>
+        )}
+        <h2 className="text-[22px] leading-[1.4] font-bold text-neutral-900 whitespace-pre-line">
+          {question.title}
+        </h2>
+      </div>
       <div className="flex flex-col gap-3">
         {question.options.map((opt, i) => {
           const selected = value === opt.value;
