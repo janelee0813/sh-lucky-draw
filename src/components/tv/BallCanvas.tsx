@@ -56,6 +56,24 @@ interface Ball {
   selected: boolean;
   removing: boolean;
   opacity: number;
+  // vortex 단계에서만 사용하는 원형 궤도 파라미터 (물리 시뮬레이션이 아닌
+  // 순수 함수형 좌표 계산이라 매 프레임 항상 매끄러운 원을 그린다)
+  orbitRadius: number;
+  orbitAngle: number;
+  orbitSpeed: number;
+}
+
+function orbitMaxRadius(ballRadius: number) {
+  return (
+    Math.min(
+      STAGE_CENTER.x - STAGE_LEFT,
+      STAGE_RIGHT - STAGE_CENTER.x,
+      STAGE_CENTER.y - STAGE_TOP,
+      STAGE_BOTTOM - STAGE_CENTER.y
+    ) -
+    ballRadius -
+    12
+  );
 }
 
 // idle: 평상시 부유 / accelerate: 추첨 시작, 빠르게 휘저음 / vortex: 소용돌이치듯 회전
@@ -117,6 +135,9 @@ export const BallCanvas = forwardRef<
             selected: false,
             removing: false,
             opacity: 1,
+            orbitRadius: 0,
+            orbitAngle: 0,
+            orbitSpeed: 0,
           });
         }
       }
@@ -273,16 +294,6 @@ export const BallCanvas = forwardRef<
       }
     }
 
-    // 스테이지 중심을 축으로 속도 벡터를 살짝 휘어 소용돌이(vortex) 궤적을 만든다.
-    function applySwirl(b: Ball, moveMult: number) {
-      const dx = b.x - STAGE_CENTER.x;
-      const dy = b.y - STAGE_CENTER.y;
-      b.vx += -dy * 0.0009;
-      b.vy += dx * 0.0009;
-      b.x += b.vx * moveMult;
-      b.y += b.vy * moveMult;
-    }
-
     function tick(now: number) {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       drawStageFrame();
@@ -293,6 +304,15 @@ export const BallCanvas = forwardRef<
 
       // ---- Phase 전환 로직 ----
       if (phase === "accelerate" && elapsed > ACCEL_MS) {
+        // 각 구슬을 현재 위치에서 이어지는 원형 궤도로 자연스럽게 편입시킨다.
+        for (const b of balls) {
+          const dx = b.x - STAGE_CENTER.x;
+          const dy = b.y - STAGE_CENTER.y;
+          const rawRadius = Math.hypot(dx, dy) || 1;
+          b.orbitRadius = Math.min(rawRadius, Math.max(24, orbitMaxRadius(b.radius)));
+          b.orbitAngle = Math.atan2(dy, dx);
+          b.orbitSpeed = 0.045 + Math.random() * 0.025;
+        }
         phaseRef.current = "vortex";
         phaseStartRef.current = now;
       } else if (phase === "vortex") {
@@ -337,56 +357,59 @@ export const BallCanvas = forwardRef<
       }
 
       // ---- 구슬 이동 ----
-      for (const b of balls) {
-        const isTarget = b.id === dropTargetIdRef.current;
-
-        if (phase === "idle") {
-          b.x += b.vx * 2.2;
-          b.y += b.vy * 2.2;
-        } else if (phase === "accelerate") {
-          b.x += b.vx * 8;
-          b.y += b.vy * 8;
-        } else if (phase === "vortex") {
-          applySwirl(b, 1.7);
-        } else if (phase === "drop") {
-          if (isTarget) {
-            const dx = HOLE.x - b.x;
-            const dy = HOLE.y - b.y;
-            const dist = Math.hypot(dx, dy) || 1;
-            const pull = 0.03 + (1 - Math.min(1, dist / 320)) * 0.16;
-            const tangentialDecay = Math.max(0, 1 - elapsed / DROP_MS);
-            b.x += (dx / dist) * pull * dist * 0.06 + (-dy / dist) * 7 * tangentialDecay;
-            b.y += (dy / dist) * pull * dist * 0.06 + (dx / dist) * 7 * tangentialDecay;
+      // idle/accelerate: 기존처럼 속도+충돌 물리 시뮬레이션을 사용한다.
+      // vortex/drop/reveal: 힘을 누적시키는 물리 대신, 시간에 대한 순수 함수로 좌표를
+      // 직접 계산한다. 그래야 충돌·클램프 등 여러 힘이 겹쳐서 생기는 뚝뚝 끊기거나
+      // 갑자기 방향이 튀는 부자연스러운 움직임 없이 항상 매끄러운 곡선을 그린다.
+      if (phase === "idle" || phase === "accelerate") {
+        const mult = phase === "idle" ? 2.2 : 8;
+        for (const b of balls) {
+          b.x += b.vx * mult;
+          b.y += b.vy * mult;
+          clampToStage(b);
+        }
+        resolveCollisions(balls);
+        for (const b of balls) clampSpeed(b);
+      } else if (phase === "vortex") {
+        for (const b of balls) {
+          b.orbitAngle += b.orbitSpeed;
+          b.x = STAGE_CENTER.x + b.orbitRadius * Math.cos(b.orbitAngle);
+          b.y = STAGE_CENTER.y + b.orbitRadius * Math.sin(b.orbitAngle);
+        }
+      } else if (phase === "drop") {
+        const t = Math.min(1, elapsed / DROP_MS);
+        const te = t * t; // ease-in: 갈수록 빠르게 빨려들어간다
+        const originX = STAGE_CENTER.x + (HOLE.x - STAGE_CENTER.x) * te;
+        const originY = STAGE_CENTER.y + (HOLE.y - STAGE_CENTER.y) * te;
+        for (const b of balls) {
+          if (b.id === dropTargetIdRef.current) {
+            b.orbitAngle += b.orbitSpeed * (1 + te * 4);
+            const r = b.orbitRadius * (1 - te);
+            b.x = originX + r * Math.cos(b.orbitAngle);
+            b.y = originY + r * Math.sin(b.orbitAngle);
             b.opacity = elapsed > DROP_MS - 150 ? Math.max(0, 1 - (elapsed - (DROP_MS - 150)) / 150) : 1;
           } else {
-            applySwirl(b, 1.3);
+            b.orbitAngle += b.orbitSpeed;
+            b.x = STAGE_CENTER.x + b.orbitRadius * Math.cos(b.orbitAngle);
+            b.y = STAGE_CENTER.y + b.orbitRadius * Math.sin(b.orbitAngle);
             b.opacity = Math.max(0.25, b.opacity - 0.02);
           }
-        } else if (phase === "reveal") {
-          if (isTarget) {
+        }
+      } else if (phase === "reveal") {
+        for (const b of balls) {
+          if (b.id === dropTargetIdRef.current) {
             holdPosRef.current.x += (HOLD_POINT.x - holdPosRef.current.x) * 0.07;
             holdPosRef.current.y += (HOLD_POINT.y - holdPosRef.current.y) * 0.07;
             b.x = holdPosRef.current.x;
             b.y = holdPosRef.current.y;
             b.opacity = Math.min(1, elapsed / 120);
           } else {
-            applySwirl(b, 1.1);
+            b.orbitAngle += b.orbitSpeed;
+            b.x = STAGE_CENTER.x + b.orbitRadius * Math.cos(b.orbitAngle);
+            b.y = STAGE_CENTER.y + b.orbitRadius * Math.sin(b.orbitAngle);
             b.opacity = Math.max(0.18, b.opacity - 0.02);
           }
         }
-
-        if (!isTarget) clampToStage(b);
-      }
-
-      // ---- 충돌 처리 (하강 중인 당첨 구슬은 제외) ----
-      if (phase === "drop" || phase === "reveal") {
-        resolveCollisions(balls.filter((b) => b.id !== dropTargetIdRef.current));
-      } else {
-        resolveCollisions(balls);
-      }
-      for (const b of balls) {
-        clampSpeed(b);
-        if (b.id !== dropTargetIdRef.current) clampToStage(b);
       }
 
       // ---- 렌더링 ----
