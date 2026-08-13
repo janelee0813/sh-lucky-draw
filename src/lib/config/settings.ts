@@ -38,6 +38,15 @@ export const BALL_SIZE: Record<1 | 2 | 3 | 4 | 5, number> = {
   5: 45,
 };
 
+// 등수별 대표 색상 (TV 구슬 색상 / 상품 패널 숫자 색상에 공용으로 사용)
+export const RANK_COLOR_HEX: Record<1 | 2 | 3 | 4 | 5, string> = {
+  1: "#FFFFFF",
+  2: "#31E7FF",
+  3: "#4C8CFF",
+  4: "#7B8CFF",
+  5: "#5D6B8C",
+};
+
 // 중복 참여(동일 휴대전화) 기본 정책 - Admin Settings에서 event_settings.allow_duplicate_phone 으로 override 가능
 export const DEFAULT_ALLOW_DUPLICATE_PHONE = false;
 

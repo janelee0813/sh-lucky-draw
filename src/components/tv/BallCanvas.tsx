@@ -1,25 +1,28 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { BALL_SIZE, VISUAL_BALL_COUNT } from "@/lib/config/settings";
+import { BALL_SIZE, RANK_COLOR_HEX, VISUAL_BALL_COUNT } from "@/lib/config/settings";
 import type { PublicPrizeStatus } from "@/types/database";
 
-const CANVAS_WIDTH = 1536;
+const CANVAS_WIDTH = 1480;
 const CANVAS_HEIGHT = 1080;
 
-// 구슬이 떠다니는 영역을 라운드 사각형으로 한정한다 (상단은 로고 텍스트를 피해 여유를 둔다).
+// 구슬이 떠다니는 영역을 라운드 사각형으로 한정한다 (로고/타이틀이 한 줄로 축소되어 상단 여백이 줄었다).
 const STAGE_LEFT = 56;
-const STAGE_TOP = 230;
+const STAGE_TOP = 150;
 const STAGE_RIGHT = CANVAS_WIDTH - 56;
 const STAGE_BOTTOM = CANVAS_HEIGHT - 56;
 const STAGE_CORNER_RADIUS = 40;
 
+// 충돌 시 과도한 에너지 누적을 막기 위한 속도 상한
+const MAX_BALL_SPEED = 4.8;
+
 const RANK_COLOR: Record<number, { core: string; glow: string }> = {
-  1: { core: "#FFFFFF", glow: "rgba(255,255,255,0.9)" },
-  2: { core: "#31E7FF", glow: "rgba(49,231,255,0.85)" },
-  3: { core: "#4C8CFF", glow: "rgba(76,140,255,0.8)" },
-  4: { core: "#7B8CFF", glow: "rgba(123,140,255,0.6)" },
-  5: { core: "#5D6B8C", glow: "rgba(93,107,140,0.5)" },
+  1: { core: RANK_COLOR_HEX[1], glow: "rgba(255,255,255,0.9)" },
+  2: { core: RANK_COLOR_HEX[2], glow: "rgba(49,231,255,0.85)" },
+  3: { core: RANK_COLOR_HEX[3], glow: "rgba(76,140,255,0.8)" },
+  4: { core: RANK_COLOR_HEX[4], glow: "rgba(123,140,255,0.6)" },
+  5: { core: RANK_COLOR_HEX[5], glow: "rgba(93,107,140,0.5)" },
 };
 
 interface Ball {
@@ -84,8 +87,8 @@ export const BallCanvas = forwardRef<
             radius,
             x: STAGE_LEFT + radius + Math.random() * (STAGE_RIGHT - STAGE_LEFT - radius * 2),
             y: STAGE_TOP + radius + Math.random() * (STAGE_BOTTOM - STAGE_TOP - radius * 2),
-            vx: (Math.random() - 0.5) * 1.8,
-            vy: (Math.random() - 0.5) * 1.8,
+            vx: (Math.random() - 0.5) * 2.7,
+            vy: (Math.random() - 0.5) * 2.7,
             phaseOffset: Math.random() * Math.PI * 2,
             selected: false,
             removing: false,
@@ -155,6 +158,51 @@ export const BallCanvas = forwardRef<
       return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
+    // 구슬끼리 겹치면 밀어내고 속도를 반사시켜 실제로 부딪히는 느낌을 준다.
+    function resolveCollisions(balls: Ball[]) {
+      for (let i = 0; i < balls.length; i++) {
+        const a = balls[i];
+        for (let j = i + 1; j < balls.length; j++) {
+          const b = balls[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy) || 0.0001;
+          const minDist = a.radius + b.radius;
+          if (dist >= minDist) continue;
+
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const overlap = minDist - dist;
+          const totalRadius = a.radius + b.radius;
+          a.x -= nx * overlap * (b.radius / totalRadius);
+          a.y -= ny * overlap * (b.radius / totalRadius);
+          b.x += nx * overlap * (a.radius / totalRadius);
+          b.y += ny * overlap * (a.radius / totalRadius);
+
+          const relVx = b.vx - a.vx;
+          const relVy = b.vy - a.vy;
+          const relDot = relVx * nx + relVy * ny;
+          if (relDot >= 0) continue; // 이미 서로 멀어지는 중이면 반사하지 않는다.
+
+          const massA = a.radius * a.radius;
+          const massB = b.radius * b.radius;
+          const impulse = (2 * relDot) / (massA + massB);
+          a.vx += impulse * massB * nx;
+          a.vy += impulse * massB * ny;
+          b.vx -= impulse * massA * nx;
+          b.vy -= impulse * massA * ny;
+        }
+      }
+
+      for (const ball of balls) {
+        const speed = Math.hypot(ball.vx, ball.vy);
+        if (speed > MAX_BALL_SPEED) {
+          ball.vx = (ball.vx / speed) * MAX_BALL_SPEED;
+          ball.vy = (ball.vy / speed) * MAX_BALL_SPEED;
+        }
+      }
+    }
+
     function tick(now: number) {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       drawStageFrame();
@@ -192,7 +240,6 @@ export const BallCanvas = forwardRef<
 
       for (const b of balls) {
         const isSelected = b.id === selectedBallIdRef.current;
-        const colors = RANK_COLOR[b.rank] ?? RANK_COLOR[5];
 
         // ---- 움직임 ----
         if (phase === "idle") {
@@ -231,6 +278,16 @@ export const BallCanvas = forwardRef<
           if (b.x < STAGE_LEFT + b.radius || b.x > STAGE_RIGHT - b.radius) b.vx *= -1;
           if (b.y < STAGE_TOP + b.radius || b.y > STAGE_BOTTOM - b.radius) b.vy *= -1;
         }
+      }
+
+      // ---- 충돌 처리 (reveal 연출 중에는 당첨 구슬의 이동을 방해하지 않도록 제외) ----
+      if (phase !== "reveal") {
+        resolveCollisions(balls);
+      }
+
+      for (const b of balls) {
+        const isSelected = b.id === selectedBallIdRef.current;
+        const colors = RANK_COLOR[b.rank] ?? RANK_COLOR[5];
 
         // ---- 렌더링 ----
         const glowPulse = 0.7 + 0.3 * Math.sin(now / 900 + b.phaseOffset);

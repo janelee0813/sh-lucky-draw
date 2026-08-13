@@ -163,7 +163,9 @@ export function SurveyFlow() {
     return (
       <div className="flex h-full flex-col justify-between px-6 pb-8 pt-10">
         <div>
-          <div className="text-[13px] font-extrabold tracking-widest text-sh-blue">SH</div>
+          <div className="text-[13px] font-extrabold tracking-widest text-sh-blue">
+            SH 서울주택도시개발공사
+          </div>
           <div className="mt-1 text-[11px] font-semibold tracking-widest text-neutral-400">
             EVENT · LUCKY DRAW
           </div>

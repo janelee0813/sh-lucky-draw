@@ -161,12 +161,12 @@ export function TvScreen() {
         <AmbientBackground />
 
         <div className="absolute left-16 top-10 z-10">
-          <div className="text-[15px] font-extrabold tracking-[0.3em] text-white">SH</div>
-          <div className="mt-1 text-[13px] font-bold tracking-[0.2em] text-sh-cyan">AI EXPO 2026</div>
-          <div className="mt-3 font-display text-[44px] font-black leading-[0.95] text-white">
-            LUCKY
-            <br />
-            DRAW
+          <div className="flex items-baseline gap-2.5 whitespace-nowrap">
+            <span className="text-[15px] font-extrabold tracking-[0.3em] text-white">SH</span>
+            <span className="text-[13px] font-bold tracking-[0.2em] text-sh-cyan">AI EXPO 2026</span>
+          </div>
+          <div className="mt-3 whitespace-nowrap font-display text-[44px] font-black leading-none text-white">
+            LUCKY DRAW
           </div>
           <div className="mt-4 text-[10px] font-medium tracking-widest text-white/30">
             SEOUL HOUSING &amp; COMMUNITIES CORPORATION
