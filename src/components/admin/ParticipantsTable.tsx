@@ -101,7 +101,7 @@ export function ParticipantsTable() {
     <div className="rounded-2xl border border-neutral-200 bg-white p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-[16px] font-bold text-neutral-900">
-          참가자 리스트 <span className="text-neutral-400 font-normal">({total}명)</span>
+          참가자 리스트 및 설문결과 <span className="text-neutral-400 font-normal">({total}명)</span>
         </h2>
         <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
           <input
@@ -174,8 +174,8 @@ export function ParticipantsTable() {
                 const isExpanded = expandedId === r.id;
                 return (
                   <Fragment key={r.id}>
-                    <tr className="border-b border-neutral-50 align-top">
-                      <td className="py-2.5 pr-3 font-bold text-neutral-900">
+                    <tr className="border-b border-neutral-50">
+                      <td className="whitespace-nowrap py-2 pr-3 font-bold text-neutral-900">
                         {String(r.ticket_number).padStart(4, "0")}
                         {r.is_test && (
                           <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-600">
@@ -183,37 +183,27 @@ export function ParticipantsTable() {
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 pr-3 text-neutral-500">
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-500">
                         {new Date(r.created_at).toLocaleString("ko-KR")}
                       </td>
-                      <td className="py-2.5 pr-3 text-neutral-700">{r.name}</td>
-                      <td className="py-2.5 pr-3 text-neutral-500">
-                        <div className="text-neutral-700">{r.company || "-"}</div>
-                        <div className="text-[11px] text-neutral-400">
-                          {optionLabel(JOB_ROLE_OPTIONS, r.job_role) || "-"}
-                        </div>
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-700">{r.name}</td>
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-500">
+                        <span className="text-neutral-700">{r.company || "-"}</span>
+                        <span className="text-neutral-400"> · {optionLabel(JOB_ROLE_OPTIONS, r.job_role) || "-"}</span>
                       </td>
-                      <td className="py-2.5 pr-3 text-neutral-600">
-                        <span className="block max-w-[220px] truncate" title={q1Label}>
-                          {q1Label || "-"}
-                        </span>
-                      </td>
-                      <td className="py-2.5 pr-3 text-neutral-600">
-                        <span className="block max-w-[200px] truncate" title={q2Label}>
-                          {q2Label || "-"}
-                        </span>
-                      </td>
-                      <td className="py-2.5 pr-3 text-neutral-500">
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-600">{q1Label || "-"}</td>
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-600">{q2Label || "-"}</td>
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-500">
                         {optionLabel(RND_DEPT_OPTIONS, r.rnd_dept) || "-"}
                       </td>
-                      <td className="py-2.5 pr-3 text-neutral-500">
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-500">
                         {r.hq_location === "etc"
                           ? `기타(${r.hq_location_other || "-"})`
                           : optionLabel(HQ_LOCATION_OPTIONS, r.hq_location) || "-"}
                       </td>
-                      <td className="py-2.5 pr-3 text-neutral-500">{r.phone}</td>
-                      <td className="py-2.5 pr-3 text-neutral-500">{r.email}</td>
-                      <td className="py-2.5 pr-3">
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-500">{r.phone}</td>
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-500">{r.email}</td>
+                      <td className="whitespace-nowrap py-2 pr-3">
                         {r.prizes ? (
                           <span className="font-bold text-sh-blue">
                             {r.prizes.rank}등 · {r.prizes.name}
@@ -224,7 +214,7 @@ export function ParticipantsTable() {
                           <span className="text-neutral-300">미추첨</span>
                         )}
                       </td>
-                      <td className="py-2.5 pr-3">
+                      <td className="whitespace-nowrap py-2 pr-3">
                         {r.prizes ? (
                           <button
                             onClick={() => toggleReceived(r.id, r.received)}
@@ -240,7 +230,7 @@ export function ParticipantsTable() {
                           <span className="text-neutral-200">-</span>
                         )}
                       </td>
-                      <td className="py-2.5 pr-3">
+                      <td className="whitespace-nowrap py-2 pr-3">
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setExpandedId(isExpanded ? null : r.id)}

@@ -106,6 +106,14 @@ export function AdminDashboard() {
 
           {tab === "dashboard" && (
             <>
+              <div className="flex items-center justify-end">
+                <a
+                  href="/api/admin/stats/export"
+                  className="whitespace-nowrap rounded-lg bg-sh-blue px-4 py-2 text-[13px] font-bold text-white"
+                >
+                  통계 Excel 다운로드
+                </a>
+              </div>
               <SurveyInsights stats={stats} />
               <StatsCards stats={stats} />
               <PrizesTable />
