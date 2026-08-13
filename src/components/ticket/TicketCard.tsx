@@ -41,7 +41,7 @@ export const TicketCard = forwardRef<HTMLDivElement, { ticketNumber: string }>(f
         <span className="rounded-full border border-sh-cyan/40 bg-sh-cyan/10 px-3 py-1 text-[11px] font-bold text-sh-cyan">
           NO BLANK · 100% WIN
         </span>
-        <span className="text-[10px] font-semibold text-white/40">AI EXPO 2026</span>
+        <span className="text-[10px] font-semibold text-white/40">AI Summit Seoul &amp; Expo</span>
       </div>
 
       <p className="mt-6 text-[12px] leading-relaxed text-white/60">

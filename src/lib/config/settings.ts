@@ -50,5 +50,5 @@ export const RANK_COLOR_HEX: Record<1 | 2 | 3 | 4 | 5, string> = {
 // 중복 참여(동일 휴대전화) 기본 정책 - Admin Settings에서 event_settings.allow_duplicate_phone 으로 override 가능
 export const DEFAULT_ALLOW_DUPLICATE_PHONE = false;
 
-export const EVENT_NAME = "SH AI EXPO 2026 LUCKY DRAW";
+export const EVENT_NAME = "SH AI Summit Seoul & Expo LUCKY DRAW";
 export const ORG_NAME_EN = "Seoul Housing & Urban Development Corporation";

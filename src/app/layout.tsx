@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SH AI EXPO 2026 | LUCKY DRAW",
-  description: "SH서울주택도시개발공사 AI EXPO 2026 부스 Lucky Draw 이벤트",
+  title: "SH AI Summit Seoul & Expo | LUCKY DRAW",
+  description: "SH서울주택도시개발공사 AI Summit Seoul & Expo 부스 Lucky Draw 이벤트",
 };
 
 export const viewport: Viewport = {
