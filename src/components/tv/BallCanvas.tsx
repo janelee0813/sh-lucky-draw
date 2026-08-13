@@ -7,6 +7,13 @@ import type { PublicPrizeStatus } from "@/types/database";
 const CANVAS_WIDTH = 1536;
 const CANVAS_HEIGHT = 1080;
 
+// 구슬이 떠다니는 영역을 라운드 사각형으로 한정한다 (상단은 로고 텍스트를 피해 여유를 둔다).
+const STAGE_LEFT = 56;
+const STAGE_TOP = 230;
+const STAGE_RIGHT = CANVAS_WIDTH - 56;
+const STAGE_BOTTOM = CANVAS_HEIGHT - 56;
+const STAGE_CORNER_RADIUS = 40;
+
 const RANK_COLOR: Record<number, { core: string; glow: string }> = {
   1: { core: "#FFFFFF", glow: "rgba(255,255,255,0.9)" },
   2: { core: "#31E7FF", glow: "rgba(49,231,255,0.85)" },
@@ -75,10 +82,10 @@ export const BallCanvas = forwardRef<
             id,
             rank,
             radius,
-            x: radius + Math.random() * (CANVAS_WIDTH - radius * 2),
-            y: radius + Math.random() * (CANVAS_HEIGHT - radius * 2),
-            vx: (Math.random() - 0.5) * 0.4,
-            vy: (Math.random() - 0.5) * 0.4,
+            x: STAGE_LEFT + radius + Math.random() * (STAGE_RIGHT - STAGE_LEFT - radius * 2),
+            y: STAGE_TOP + radius + Math.random() * (STAGE_BOTTOM - STAGE_TOP - radius * 2),
+            vx: (Math.random() - 0.5) * 1.8,
+            vy: (Math.random() - 0.5) * 1.8,
             phaseOffset: Math.random() * Math.PI * 2,
             selected: false,
             removing: false,
@@ -118,8 +125,26 @@ export const BallCanvas = forwardRef<
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
-    const centerX = CANVAS_WIDTH / 2;
-    const centerY = CANVAS_HEIGHT / 2;
+    const centerX = (STAGE_LEFT + STAGE_RIGHT) / 2;
+    const centerY = (STAGE_TOP + STAGE_BOTTOM) / 2;
+
+    function drawStageFrame() {
+      const r = STAGE_CORNER_RADIUS;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(STAGE_LEFT + r, STAGE_TOP);
+      ctx.arcTo(STAGE_RIGHT, STAGE_TOP, STAGE_RIGHT, STAGE_BOTTOM, r);
+      ctx.arcTo(STAGE_RIGHT, STAGE_BOTTOM, STAGE_LEFT, STAGE_BOTTOM, r);
+      ctx.arcTo(STAGE_LEFT, STAGE_BOTTOM, STAGE_LEFT, STAGE_TOP, r);
+      ctx.arcTo(STAGE_LEFT, STAGE_TOP, STAGE_RIGHT, STAGE_TOP, r);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255,255,255,0.16)";
+      ctx.stroke();
+      ctx.restore();
+    }
 
     function pickSelectedBall(): Ball | null {
       const rank = winningRankRef.current;
@@ -132,6 +157,7 @@ export const BallCanvas = forwardRef<
 
     function tick(now: number) {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      drawStageFrame();
       const balls = ballsRef.current;
       const phase = phaseRef.current;
       const elapsed = now - phaseStartRef.current;
@@ -170,15 +196,15 @@ export const BallCanvas = forwardRef<
 
         // ---- 움직임 ----
         if (phase === "idle") {
-          b.x += b.vx;
-          b.y += b.vy;
-          if (b.x < b.radius || b.x > CANVAS_WIDTH - b.radius) b.vx *= -1;
-          if (b.y < b.radius || b.y > CANVAS_HEIGHT - b.radius) b.vy *= -1;
+          b.x += b.vx * 2.2;
+          b.y += b.vy * 2.2;
+          if (b.x < STAGE_LEFT + b.radius || b.x > STAGE_RIGHT - b.radius) b.vx *= -1;
+          if (b.y < STAGE_TOP + b.radius || b.y > STAGE_BOTTOM - b.radius) b.vy *= -1;
         } else if (phase === "accelerate") {
           b.x += b.vx * 4;
           b.y += b.vy * 4;
-          if (b.x < b.radius || b.x > CANVAS_WIDTH - b.radius) b.vx *= -1;
-          if (b.y < b.radius || b.y > CANVAS_HEIGHT - b.radius) b.vy *= -1;
+          if (b.x < STAGE_LEFT + b.radius || b.x > STAGE_RIGHT - b.radius) b.vx *= -1;
+          if (b.y < STAGE_TOP + b.radius || b.y > STAGE_BOTTOM - b.radius) b.vy *= -1;
         } else if (phase === "converge") {
           const dx = centerX - b.x;
           const dy = centerY - b.y;
@@ -189,8 +215,8 @@ export const BallCanvas = forwardRef<
         } else if (phase === "settle" || phase === "highlight") {
           b.x += b.vx * 0.6;
           b.y += b.vy * 0.6;
-          if (b.x < b.radius || b.x > CANVAS_WIDTH - b.radius) b.vx *= -1;
-          if (b.y < b.radius || b.y > CANVAS_HEIGHT - b.radius) b.vy *= -1;
+          if (b.x < STAGE_LEFT + b.radius || b.x > STAGE_RIGHT - b.radius) b.vx *= -1;
+          if (b.y < STAGE_TOP + b.radius || b.y > STAGE_BOTTOM - b.radius) b.vy *= -1;
         } else if (phase === "reveal") {
           if (isSelected) {
             b.x += (centerX - b.x) * 0.12;
@@ -202,8 +228,8 @@ export const BallCanvas = forwardRef<
           // 평상시 Ambient Float
           b.x += b.vx * 0.5 + Math.sin(now / 1800 + b.phaseOffset) * 0.15;
           b.y += b.vy * 0.5 + Math.cos(now / 2200 + b.phaseOffset) * 0.15;
-          if (b.x < b.radius || b.x > CANVAS_WIDTH - b.radius) b.vx *= -1;
-          if (b.y < b.radius || b.y > CANVAS_HEIGHT - b.radius) b.vy *= -1;
+          if (b.x < STAGE_LEFT + b.radius || b.x > STAGE_RIGHT - b.radius) b.vx *= -1;
+          if (b.y < STAGE_TOP + b.radius || b.y > STAGE_BOTTOM - b.radius) b.vy *= -1;
         }
 
         // ---- 렌더링 ----
@@ -234,6 +260,16 @@ export const BallCanvas = forwardRef<
         ctx.beginPath();
         ctx.arc(b.x, b.y, drawRadius, 0, Math.PI * 2);
         ctx.fill();
+
+        const fontSize = Math.max(14, Math.round(drawRadius * 0.85));
+        ctx.font = `800 ${fontSize}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.lineWidth = Math.max(2, drawRadius * 0.12);
+        ctx.strokeStyle = "rgba(4,8,20,0.85)";
+        ctx.strokeText(String(b.rank), b.x, b.y);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillText(String(b.rank), b.x, b.y);
 
         ctx.restore();
       }

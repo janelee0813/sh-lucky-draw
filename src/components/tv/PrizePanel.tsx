@@ -33,9 +33,9 @@ export function PrizePanel({
           </button>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4">
-          <div className="text-[10px] font-bold tracking-widest text-white/40">TOTAL PRIZES</div>
-          <div className="mt-1 font-display text-[40px] font-black leading-none text-white">
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-5">
+          <div className="text-[13px] font-bold tracking-widest text-white/40">TOTAL PRIZES</div>
+          <div className="mt-1 font-display text-[72px] font-black leading-none text-white">
             {totalRemaining}
           </div>
         </div>
@@ -44,19 +44,19 @@ export function PrizePanel({
           {prizes.map((p) => (
             <div
               key={p.id}
-              className={`flex items-center justify-between rounded-xl border px-4 py-3 transition-opacity ${
+              className={`flex items-center justify-between rounded-xl border px-4 py-4 transition-opacity ${
                 p.remaining_quantity === 0
                   ? "border-white/5 opacity-30"
                   : "border-white/10 bg-white/[0.03]"
               }`}
             >
               <div className="flex items-center gap-3">
-                <span className="text-[11px] font-bold text-sh-cyan">
+                <span className="text-[18px] font-extrabold text-sh-cyan">
                   {String(p.rank).padStart(2, "0")}
                 </span>
-                <span className="text-[13px] font-semibold text-white">{p.name}</span>
+                <span className="text-[19px] font-bold text-white">{p.name}</span>
               </div>
-              <span className="text-[13px] font-bold text-white">
+              <span className="text-[19px] font-extrabold text-white">
                 {p.remaining_quantity} LEFT
               </span>
             </div>
