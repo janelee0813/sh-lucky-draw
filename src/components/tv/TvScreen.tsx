@@ -22,7 +22,7 @@ export function TvScreen() {
   const [modal, setModal] = useState<Modal>("none");
   const [errorInfo, setErrorInfo] = useState<{ title: string; description?: string } | null>(null);
   const [pendingResult, setPendingResult] = useState<{ rank: number; name: string } | null>(null);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>("ball");
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("roulette");
 
   const ballCanvasRef = useRef<BallCanvasHandle>(null);
   const rouletteCanvasRef = useRef<RouletteCanvasHandle>(null);

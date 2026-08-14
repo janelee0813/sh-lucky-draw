@@ -20,50 +20,18 @@ const WHEEL_RADIUS =
 const HUB_RADIUS = WHEEL_RADIUS * 0.17;
 
 const RANKS = [1, 2, 3, 4, 5] as const;
-// 등수별 휠 칸 수 - 당첨 확률이 낮은 1등일수록 좁게, 5등으로 갈수록 넓게 보이도록 칸 개수를 늘린다.
-const RANK_SLICE_COUNT: Record<(typeof RANKS)[number], number> = {
-  1: 2,
-  2: 3,
-  3: 4,
-  4: 5,
-  5: 6,
-};
-
-// 같은 등수의 칸이 한쪽에 몰리지 않도록 최대한 고르게 섞어 배치한다(가중 라운드로빈).
-function buildSliceOrder(counts: Record<number, number>): number[] {
-  const ranks = Object.keys(counts).map(Number);
-  const total = ranks.reduce((sum, r) => sum + counts[r], 0);
-  const used: Record<number, number> = Object.fromEntries(ranks.map((r) => [r, 0]));
-  const order: number[] = [];
-  for (let i = 1; i <= total; i++) {
-    let best = ranks[0];
-    let bestScore = -Infinity;
-    for (const r of ranks) {
-      const score = (i * counts[r]) / total - used[r];
-      if (score > bestScore) {
-        bestScore = score;
-        best = r;
-      }
-    }
-    order.push(best);
-    used[best] += 1;
-  }
-  return order;
-}
-
-const SLICE_ORDER = buildSliceOrder(RANK_SLICE_COUNT);
-const TOTAL_SLICES = SLICE_ORDER.length;
-const SLICE_ANGLE = (Math.PI * 2) / TOTAL_SLICES;
+const SLICE_ANGLE = (Math.PI * 2) / RANKS.length;
 // 0번 슬라이스 중심이 정확히 12시 방향(포인터 위치)에 오도록 하는 기준 시작각
 const SLICE_BASE_START = -Math.PI / 2 - SLICE_ANGLE / 2;
 
 const IDLE_SPEED = 0.0035; // rad/frame, 대기 중 은은한 회전
 const SPIN_TARGET_SPEED = 0.34; // rad/frame, 추첨 중 빠른 회전
-const SPIN_MIN_MS = 4500;
-const SETTLE_MS = 4200;
+const MS_PER_FRAME = 1000 / 60;
+const SPIN_MIN_MS = 4000;
+const SETTLE_MS = 5000;
 const FLASH_MS = 800;
-const EXTRA_TURNS = 5;
-// 전체 연출 길이(가속 대기 없이) = SPIN_MIN_MS + SETTLE_MS + FLASH_MS ≈ 9.5초 (BallCanvas와 동일)
+const EXTRA_TURNS = 8; // 감속 구간에서 도는 추가 바퀴 수 - 늘릴수록 급정지 없이 천천히 멈추는 느낌이 된다.
+// 전체 연출 길이(가속 대기 없이) = SPIN_MIN_MS + SETTLE_MS + FLASH_MS ≈ 9.8초 (BallCanvas와 유사)
 
 const RANK_COLOR: Record<number, { core: string; glow: string }> = {
   1: { core: RANK_COLOR_HEX[1], glow: "rgba(255,255,255,0.9)" },
@@ -73,9 +41,16 @@ const RANK_COLOR: Record<number, { core: string; glow: string }> = {
   5: { core: RANK_COLOR_HEX[5], glow: "rgba(93,107,140,0.5)" },
 };
 
-function easeOutCubic(t: number) {
+// Hermite 보간: 시작 속도(m0)를 감속 직전 회전 속도와 정확히 이어지도록 맞추고,
+// 끝에서는 속도가 0이 되도록 부드럽게 감속시킨다. 이렇게 하면 빠르게 돌다가
+// 갑자기 브레이크를 거는 느낌 없이, 실제 속도 그대로 이어받아 서서히 멈춘다.
+function easeFromVelocity(t: number, m0: number) {
   const c = Math.min(1, Math.max(0, t));
-  return 1 - Math.pow(1 - c, 3);
+  const t2 = c * c;
+  const t3 = t2 * c;
+  const h10 = t3 - 2 * t2 + c;
+  const h01 = -2 * t3 + 3 * t2;
+  return h10 * m0 + h01;
 }
 
 function normalizeAngle(a: number) {
@@ -108,7 +83,7 @@ export const RouletteCanvas = forwardRef<
   const settleToRef = useRef(0);
   const winningRankRef = useRef<number | null>(null);
   const landedRankRef = useRef<number | null>(null);
-  const landedIndexRef = useRef<number | null>(null);
+  const settleM0Ref = useRef(1);
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
@@ -121,7 +96,6 @@ export const RouletteCanvas = forwardRef<
       phaseStartRef.current = performance.now();
       winningRankRef.current = null;
       landedRankRef.current = null;
-      landedIndexRef.current = null;
 
       getWinningRank().then((rank) => {
         winningRankRef.current = rank;
@@ -185,20 +159,19 @@ export const RouletteCanvas = forwardRef<
       // ---- Phase 전환 로직 ----
       if (phase === "spin" && winningRankRef.current !== null && elapsed > SPIN_MIN_MS) {
         const rank = winningRankRef.current;
-        const candidates: number[] = [];
-        for (let idx = 0; idx < SLICE_ORDER.length; idx++) {
-          if (SLICE_ORDER[idx] === rank) candidates.push(idx);
-        }
-        const index = candidates[Math.floor(Math.random() * candidates.length)];
+        const index = RANKS.indexOf(rank as (typeof RANKS)[number]);
         const currentMod = normalizeAngle(angleRef.current);
         const desiredMod = normalizeAngle(-index * SLICE_ANGLE);
         let delta = desiredMod - currentMod;
         if (delta <= 0.0001) delta += Math.PI * 2;
 
+        const distance = delta + EXTRA_TURNS * Math.PI * 2;
         settleFromRef.current = angleRef.current;
-        settleToRef.current = angleRef.current + delta + EXTRA_TURNS * Math.PI * 2;
+        settleToRef.current = angleRef.current + distance;
+        // 감속 시작 순간의 실제 회전 속도를 그대로 이어받도록 곡선의 시작 기울기를 맞춘다.
+        const v0PerMs = velocityRef.current / MS_PER_FRAME;
+        settleM0Ref.current = Math.min(2.4, (v0PerMs * SETTLE_MS) / distance);
         landedRankRef.current = rank;
-        landedIndexRef.current = index;
         phaseRef.current = "settle";
         phaseStartRef.current = now;
       } else if (phase === "settle" && elapsed > SETTLE_MS) {
@@ -209,7 +182,6 @@ export const RouletteCanvas = forwardRef<
         phaseStartRef.current = now;
       } else if (phase === "flash" && elapsed > FLASH_MS) {
         landedRankRef.current = null;
-        landedIndexRef.current = null;
         winningRankRef.current = null;
         phaseRef.current = "idle";
         phaseStartRef.current = now;
@@ -223,7 +195,7 @@ export const RouletteCanvas = forwardRef<
         velocityRef.current += (SPIN_TARGET_SPEED - velocityRef.current) * 0.05;
         angleRef.current += velocityRef.current;
       } else if (phase === "settle") {
-        const t = easeOutCubic(elapsed / SETTLE_MS);
+        const t = easeFromVelocity(elapsed / SETTLE_MS, settleM0Ref.current);
         angleRef.current = settleFromRef.current + (settleToRef.current - settleFromRef.current) * t;
       }
       // flash 단계는 angleRef를 settleToRef에 고정한 채 유지한다.
@@ -250,11 +222,11 @@ export const RouletteCanvas = forwardRef<
       ctx.restore();
 
       // ---- 슬라이스 ----
-      for (let i = 0; i < TOTAL_SLICES; i++) {
-        const rank = SLICE_ORDER[i];
+      for (let i = 0; i < RANKS.length; i++) {
+        const rank = RANKS[i];
         const prize = prizesRef.current.find((p) => p.rank === rank);
         const soldOut = prize ? prize.remaining_quantity <= 0 : false;
-        const isLanded = phase === "flash" && landedIndexRef.current === i;
+        const isLanded = phase === "flash" && landedRankRef.current === rank;
         const colors = RANK_COLOR[rank] ?? RANK_COLOR[5];
 
         const sliceStart = angle + SLICE_BASE_START + i * SLICE_ANGLE;
@@ -274,7 +246,7 @@ export const RouletteCanvas = forwardRef<
           ctx.fillStyle = "#FFFFFF";
           ctx.fill();
         }
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.strokeStyle = "rgba(4,8,20,0.55)";
         ctx.stroke();
         ctx.restore();
@@ -297,13 +269,13 @@ export const RouletteCanvas = forwardRef<
         ctx.lineJoin = "round";
         ctx.miterLimit = 2;
 
-        const rankFontSize = Math.max(14, Math.round(WHEEL_RADIUS * 0.1));
+        const rankFontSize = Math.max(20, Math.round(WHEEL_RADIUS * 0.17));
         ctx.font = `800 ${rankFontSize}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
         ctx.lineWidth = rankFontSize * 0.09;
         ctx.strokeStyle = "rgba(4,8,20,0.75)";
-        ctx.strokeText(`${rank}등`, 0, dir * WHEEL_RADIUS * 0.68);
+        ctx.strokeText(`${rank}등`, 0, dir * WHEEL_RADIUS * 0.55);
         ctx.fillStyle = "#FFFFFF";
-        ctx.fillText(`${rank}등`, 0, dir * WHEEL_RADIUS * 0.68);
+        ctx.fillText(`${rank}등`, 0, dir * WHEEL_RADIUS * 0.55);
         ctx.restore();
       }
 
