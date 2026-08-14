@@ -20,7 +20,40 @@ const WHEEL_RADIUS =
 const HUB_RADIUS = WHEEL_RADIUS * 0.17;
 
 const RANKS = [1, 2, 3, 4, 5] as const;
-const SLICE_ANGLE = (Math.PI * 2) / RANKS.length;
+// 등수별 휠 칸 수 - 당첨 확률이 낮은 1등일수록 좁게, 5등으로 갈수록 넓게 보이도록 칸 개수를 늘린다.
+const RANK_SLICE_COUNT: Record<(typeof RANKS)[number], number> = {
+  1: 2,
+  2: 3,
+  3: 4,
+  4: 5,
+  5: 6,
+};
+
+// 같은 등수의 칸이 한쪽에 몰리지 않도록 최대한 고르게 섞어 배치한다(가중 라운드로빈).
+function buildSliceOrder(counts: Record<number, number>): number[] {
+  const ranks = Object.keys(counts).map(Number);
+  const total = ranks.reduce((sum, r) => sum + counts[r], 0);
+  const used: Record<number, number> = Object.fromEntries(ranks.map((r) => [r, 0]));
+  const order: number[] = [];
+  for (let i = 1; i <= total; i++) {
+    let best = ranks[0];
+    let bestScore = -Infinity;
+    for (const r of ranks) {
+      const score = (i * counts[r]) / total - used[r];
+      if (score > bestScore) {
+        bestScore = score;
+        best = r;
+      }
+    }
+    order.push(best);
+    used[best] += 1;
+  }
+  return order;
+}
+
+const SLICE_ORDER = buildSliceOrder(RANK_SLICE_COUNT);
+const TOTAL_SLICES = SLICE_ORDER.length;
+const SLICE_ANGLE = (Math.PI * 2) / TOTAL_SLICES;
 // 0번 슬라이스 중심이 정확히 12시 방향(포인터 위치)에 오도록 하는 기준 시작각
 const SLICE_BASE_START = -Math.PI / 2 - SLICE_ANGLE / 2;
 
@@ -75,6 +108,7 @@ export const RouletteCanvas = forwardRef<
   const settleToRef = useRef(0);
   const winningRankRef = useRef<number | null>(null);
   const landedRankRef = useRef<number | null>(null);
+  const landedIndexRef = useRef<number | null>(null);
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
@@ -87,6 +121,7 @@ export const RouletteCanvas = forwardRef<
       phaseStartRef.current = performance.now();
       winningRankRef.current = null;
       landedRankRef.current = null;
+      landedIndexRef.current = null;
 
       getWinningRank().then((rank) => {
         winningRankRef.current = rank;
@@ -150,7 +185,11 @@ export const RouletteCanvas = forwardRef<
       // ---- Phase 전환 로직 ----
       if (phase === "spin" && winningRankRef.current !== null && elapsed > SPIN_MIN_MS) {
         const rank = winningRankRef.current;
-        const index = RANKS.indexOf(rank as (typeof RANKS)[number]);
+        const candidates: number[] = [];
+        for (let idx = 0; idx < SLICE_ORDER.length; idx++) {
+          if (SLICE_ORDER[idx] === rank) candidates.push(idx);
+        }
+        const index = candidates[Math.floor(Math.random() * candidates.length)];
         const currentMod = normalizeAngle(angleRef.current);
         const desiredMod = normalizeAngle(-index * SLICE_ANGLE);
         let delta = desiredMod - currentMod;
@@ -159,6 +198,7 @@ export const RouletteCanvas = forwardRef<
         settleFromRef.current = angleRef.current;
         settleToRef.current = angleRef.current + delta + EXTRA_TURNS * Math.PI * 2;
         landedRankRef.current = rank;
+        landedIndexRef.current = index;
         phaseRef.current = "settle";
         phaseStartRef.current = now;
       } else if (phase === "settle" && elapsed > SETTLE_MS) {
@@ -169,6 +209,7 @@ export const RouletteCanvas = forwardRef<
         phaseStartRef.current = now;
       } else if (phase === "flash" && elapsed > FLASH_MS) {
         landedRankRef.current = null;
+        landedIndexRef.current = null;
         winningRankRef.current = null;
         phaseRef.current = "idle";
         phaseStartRef.current = now;
@@ -209,11 +250,11 @@ export const RouletteCanvas = forwardRef<
       ctx.restore();
 
       // ---- 슬라이스 ----
-      for (let i = 0; i < RANKS.length; i++) {
-        const rank = RANKS[i];
+      for (let i = 0; i < TOTAL_SLICES; i++) {
+        const rank = SLICE_ORDER[i];
         const prize = prizesRef.current.find((p) => p.rank === rank);
         const soldOut = prize ? prize.remaining_quantity <= 0 : false;
-        const isLanded = phase === "flash" && landedRankRef.current === rank;
+        const isLanded = phase === "flash" && landedIndexRef.current === i;
         const colors = RANK_COLOR[rank] ?? RANK_COLOR[5];
 
         const sliceStart = angle + SLICE_BASE_START + i * SLICE_ANGLE;
@@ -233,12 +274,12 @@ export const RouletteCanvas = forwardRef<
           ctx.fillStyle = "#FFFFFF";
           ctx.fill();
         }
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2;
         ctx.strokeStyle = "rgba(4,8,20,0.55)";
         ctx.stroke();
         ctx.restore();
 
-        // 라벨(등수 + 상품명) - 슬라이스 중심선을 따라 바깥쪽을 향하도록 회전.
+        // 라벨(등수) - 슬라이스 중심선을 따라 바깥쪽을 향하도록 회전.
         // 원 아래쪽 절반에서는 그대로 두면 글자가 거꾸로 보이므로 180도 뒤집어 항상 바로 읽히게 한다.
         const labelAngle = angle - Math.PI / 2 + i * SLICE_ANGLE;
         let textRotation = labelAngle + Math.PI / 2;
@@ -256,23 +297,13 @@ export const RouletteCanvas = forwardRef<
         ctx.lineJoin = "round";
         ctx.miterLimit = 2;
 
-        const rankFontSize = Math.max(18, Math.round(WHEEL_RADIUS * 0.16));
+        const rankFontSize = Math.max(14, Math.round(WHEEL_RADIUS * 0.1));
         ctx.font = `800 ${rankFontSize}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
         ctx.lineWidth = rankFontSize * 0.09;
         ctx.strokeStyle = "rgba(4,8,20,0.75)";
-        ctx.strokeText(`${rank}등`, 0, dir * WHEEL_RADIUS * 0.5);
+        ctx.strokeText(`${rank}등`, 0, dir * WHEEL_RADIUS * 0.68);
         ctx.fillStyle = "#FFFFFF";
-        ctx.fillText(`${rank}등`, 0, dir * WHEEL_RADIUS * 0.5);
-
-        if (prize?.name) {
-          const nameFontSize = Math.max(12, Math.round(WHEEL_RADIUS * 0.075));
-          ctx.font = `700 ${nameFontSize}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
-          ctx.lineWidth = nameFontSize * 0.12;
-          ctx.strokeStyle = "rgba(4,8,20,0.7)";
-          ctx.strokeText(prize.name, 0, dir * WHEEL_RADIUS * 0.34);
-          ctx.fillStyle = "rgba(255,255,255,0.92)";
-          ctx.fillText(prize.name, 0, dir * WHEEL_RADIUS * 0.34);
-        }
+        ctx.fillText(`${rank}등`, 0, dir * WHEEL_RADIUS * 0.68);
         ctx.restore();
       }
 
