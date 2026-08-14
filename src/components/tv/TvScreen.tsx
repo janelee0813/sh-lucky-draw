@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ScaleStage } from "@/components/tv/ScaleStage";
 import { AmbientBackground } from "@/components/tv/AmbientBackground";
 import { BallCanvas, type BallCanvasHandle } from "@/components/tv/BallCanvas";
+import { RouletteCanvas, type RouletteCanvasHandle } from "@/components/tv/RouletteCanvas";
 import { PrizePanel } from "@/components/tv/PrizePanel";
 import { DrawEntryModal } from "@/components/tv/DrawEntryModal";
 import { DrawErrorModal } from "@/components/tv/DrawErrorModal";
@@ -13,6 +14,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { PublicPrizeStatus } from "@/types/database";
 
 type Modal = "none" | "entry" | "error" | "result";
+type DisplayMode = "ball" | "roulette";
 
 export function TvScreen() {
   const [staffAuthed, setStaffAuthed] = useState<boolean | null>(null);
@@ -20,8 +22,10 @@ export function TvScreen() {
   const [modal, setModal] = useState<Modal>("none");
   const [errorInfo, setErrorInfo] = useState<{ title: string; description?: string } | null>(null);
   const [pendingResult, setPendingResult] = useState<{ rank: number; name: string } | null>(null);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("ball");
 
   const ballCanvasRef = useRef<BallCanvasHandle>(null);
+  const rouletteCanvasRef = useRef<RouletteCanvasHandle>(null);
 
   useEffect(() => {
     fetch("/api/staff/status")
@@ -160,8 +164,9 @@ export function TvScreen() {
     }
 
     setPendingResult({ rank: outcome.rank, name: outcome.name });
-    ballCanvasRef.current?.startDraw(async () => outcome.rank);
-  }, []);
+    const activeRef = displayMode === "ball" ? ballCanvasRef : rouletteCanvasRef;
+    activeRef.current?.startDraw(async () => outcome.rank);
+  }, [displayMode]);
 
   const handleRevealReady = useCallback((_rank: number) => {
     setModal("result");
@@ -187,7 +192,20 @@ export function TvScreen() {
           </div>
         </div>
 
-        <BallCanvas ref={ballCanvasRef} prizes={prizes} onRevealReady={handleRevealReady} />
+        {displayMode === "ball" ? (
+          <BallCanvas ref={ballCanvasRef} prizes={prizes} onRevealReady={handleRevealReady} />
+        ) : (
+          <RouletteCanvas ref={rouletteCanvasRef} prizes={prizes} onRevealReady={handleRevealReady} />
+        )}
+
+        <button
+          type="button"
+          onClick={() => setDisplayMode((m) => (m === "ball" ? "roulette" : "ball"))}
+          className="absolute z-20 rounded-full border border-white/15 bg-black/30 px-2.5 py-1 text-[9px] font-medium text-white/40 backdrop-blur-sm transition-colors hover:border-white/30 hover:text-white/80"
+          style={{ top: 162, right: 508 }}
+        >
+          전환
+        </button>
 
         <PrizePanel
           prizes={prizes}
