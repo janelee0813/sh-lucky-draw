@@ -22,7 +22,10 @@ export function ResetPanel() {
       setMessage("초기화가 완료되었습니다. 페이지를 새로고침합니다.");
       setTimeout(() => window.location.reload(), 1200);
     } else {
-      setMessage("초기화에 실패했습니다.");
+      const data = await res.json().catch(() => null);
+      setMessage(
+        `초기화에 실패했습니다. (${res.status} ${data?.error ?? ""}${data?.message ? `: ${data.message}` : ""})`
+      );
     }
     setOpenScope(null);
     setConfirmText("");

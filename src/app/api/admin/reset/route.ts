@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error("reset error:", error);
-    return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
+    return NextResponse.json({ error: "UNKNOWN", message: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
