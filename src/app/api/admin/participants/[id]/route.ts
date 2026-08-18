@@ -40,7 +40,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
     }
     console.error("delete participant error:", error);
-    return NextResponse.json({ error: "UNKNOWN" }, { status: 500 });
+    return NextResponse.json({ error: "UNKNOWN", message: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
