@@ -24,12 +24,22 @@ export async function PUT(req: NextRequest) {
   if (unauthorized) return unauthorized;
 
   const body = await req.json().catch(() => null);
-  const update: Record<string, boolean> = {};
+  const update: Record<string, boolean | number | null> = {};
   if (typeof body?.allow_duplicate_phone === "boolean") {
     update.allow_duplicate_phone = body.allow_duplicate_phone;
   }
   if (typeof body?.test_mode === "boolean") {
     update.test_mode = body.test_mode;
+  }
+  if ("rank1_fixed_draw_number" in (body ?? {})) {
+    const value = body.rank1_fixed_draw_number;
+    if (value === null) {
+      update.rank1_fixed_draw_number = null;
+    } else if (Number.isInteger(value) && value > 0) {
+      update.rank1_fixed_draw_number = value;
+    } else {
+      return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
+    }
   }
 
   const supabase = getSupabaseServiceClient();

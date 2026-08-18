@@ -6,13 +6,18 @@ export function SettingsPanel() {
   const [settings, setSettings] = useState<{
     allow_duplicate_phone: boolean;
     test_mode: boolean;
+    rank1_fixed_draw_number: number | null;
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [rank1Input, setRank1Input] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/settings")
       .then((res) => res.json())
-      .then((data) => setSettings(data.settings));
+      .then((data) => {
+        setSettings(data.settings);
+        setRank1Input(data.settings?.rank1_fixed_draw_number?.toString() ?? "");
+      });
   }, []);
 
   async function toggle(key: "allow_duplicate_phone" | "test_mode") {
@@ -24,6 +29,18 @@ export function SettingsPanel() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [key]: next[key] }),
+    });
+    setSaving(false);
+  }
+
+  async function saveRank1DrawNumber(value: number | null) {
+    if (!settings) return;
+    setSettings({ ...settings, rank1_fixed_draw_number: value });
+    setSaving(true);
+    await fetch("/api/admin/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rank1_fixed_draw_number: value }),
     });
     setSaving(false);
   }
@@ -59,6 +76,37 @@ export function SettingsPanel() {
             checked={settings?.allow_duplicate_phone ?? false}
             onChange={() => toggle("allow_duplicate_phone")}
           />
+        </div>
+
+        <div className="flex items-center justify-between py-4">
+          <div>
+            <div className="text-[14px] font-semibold text-neutral-800">1등 고정 추첨 순번</div>
+            <p className="mt-0.5 text-[12.5px] text-neutral-400">
+              전체 추첨 중 몇 번째 순번에서 1등이 나오게 할지 지정합니다. 그 이전 순번에서는
+              1등이 랜덤 추첨 대상에서 제외되고, 지정한 순번에 도달하면(1등 재고가 남아있는 한)
+              반드시 1등이 나옵니다. 비워두면 완전 랜덤으로 동작합니다.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              value={rank1Input}
+              onChange={(e) => setRank1Input(e.target.value)}
+              placeholder="예: 30"
+              className="w-20 rounded-lg border border-neutral-200 px-2 py-1.5 text-[13px] text-neutral-800"
+            />
+            <button
+              onClick={() => {
+                const n = parseInt(rank1Input, 10);
+                saveRank1DrawNumber(Number.isInteger(n) && n > 0 ? n : null);
+                if (!(Number.isInteger(n) && n > 0)) setRank1Input("");
+              }}
+              className="rounded-lg bg-sh-blue px-3 py-1.5 text-[13px] font-semibold text-white"
+            >
+              적용
+            </button>
+          </div>
         </div>
       </div>
     </div>
