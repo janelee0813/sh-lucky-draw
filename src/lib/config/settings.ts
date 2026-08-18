@@ -12,7 +12,7 @@ export const PRIZE_SEED: PrizeSeed[] = [
   { rank: 1, name: "AirPods 4", initial_quantity: 1, display_order: 1 },
   { rank: 2, name: "Belkin 충전기", initial_quantity: 5, display_order: 2 },
   { rank: 3, name: "Re:QM 여행용 충전기", initial_quantity: 10, display_order: 3 },
-  { rank: 4, name: "편의점 상품권", initial_quantity: 100, display_order: 4 },
+  { rank: 4, name: "편의점 상품권 3,000원", initial_quantity: 100, display_order: 4 },
   // 5등 수량 100 -> 84로 조정 (총합 200개에 맞춤: 1+5+10+100+84=200)
   { rank: 5, name: "Haribo 젤리 간식", initial_quantity: 84, display_order: 5 },
 ];

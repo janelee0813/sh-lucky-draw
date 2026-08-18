@@ -8,7 +8,7 @@ values
   (1, 'AirPods 4', 1, 1, 1),
   (2, 'Belkin 충전기', 5, 5, 2),
   (3, 'Re:QM 여행용 충전기', 10, 10, 3),
-  (4, '편의점 상품권', 100, 100, 4),
+  (4, '편의점 상품권 3,000원', 100, 100, 4),
   (5, 'Haribo 젤리 간식', 84, 84, 5)
 on conflict (rank) do update set
   name = excluded.name,
