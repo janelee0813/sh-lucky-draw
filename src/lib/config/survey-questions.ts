@@ -26,11 +26,11 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
     key: "survey_answer_1",
     notice: MAGOK_NOTICE,
-    title: "마곡 일반산업단지 내 관심 있는\n블록이나 필지를 선택해 주세요.",
+    title: "마곡 일반산업단지 내 관심 있는\n부지(위치)가 있다면 선택해 주세요.",
     options: [
-      { value: "anchor_block", label: "5호선 발산역 인접 대형 앵커 블록(L4, L5, L6)" },
-      { value: "small_lot_balsan", label: "5호선 발산역 인접 중소형 분할 필지(L5-3,4,5,6, L7)" },
-      { value: "small_lot_olympic", label: "올림픽대로 인접 중소형 분할 필지(L1-1,2,3, L2-1,2,3, L3-1,2,3)" },
+      { value: "anchor_block", label: "① 5호선 발산역 대형 부지(L4, L5, L6)" },
+      { value: "small_lot_balsan", label: "② 5호선 발산역 인접 중소형 부지(L5-3,4,5,6 / L7-1,2,3)" },
+      { value: "small_lot_olympic", label: "③ 올림픽대로 인접 중소형 부지(L1-1,2,3, L2-1,2,3, L3-1,2,3)" },
     ],
   },
   {
