@@ -31,12 +31,13 @@ export async function PUT(req: NextRequest) {
   if (typeof body?.test_mode === "boolean") {
     update.test_mode = body.test_mode;
   }
-  if ("rank1_fixed_draw_number" in (body ?? {})) {
-    const value = body.rank1_fixed_draw_number;
+  for (const key of ["rank1_fixed_draw_number", "rank2_fixed_draw_number", "rank3_fixed_draw_number"] as const) {
+    if (!(key in (body ?? {}))) continue;
+    const value = body[key];
     if (value === null) {
-      update.rank1_fixed_draw_number = null;
+      update[key] = null;
     } else if (Number.isInteger(value) && value > 0) {
-      update.rank1_fixed_draw_number = value;
+      update[key] = value;
     } else {
       return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
     }
