@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { StatsCards } from "./StatsCards";
-import { SurveyInsights, type SurveyStats } from "./SurveyInsights";
 import { RoundParticipantsTable } from "./RoundParticipantsTable";
 import { AllParticipantsTable } from "./AllParticipantsTable";
 import { PrizesTable } from "./PrizesTable";
@@ -38,16 +37,13 @@ type PrizeBreakdownRow = {
 export function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const dashboardImage = useImageDownload("SH_LUCKY_DRAW_대시보드");
-  const [stats, setStats] = useState<
-    | ({
-        totalParticipants: number;
-        drawnCount: number;
-        pendingDrawCount: number;
-        remainingPrizes: number;
-        prizeBreakdown: PrizeBreakdownRow[];
-      } & SurveyStats)
-    | null
-  >(null);
+  const [stats, setStats] = useState<{
+    totalParticipants: number;
+    drawnCount: number;
+    pendingDrawCount: number;
+    remainingPrizes: number;
+    prizeBreakdown: PrizeBreakdownRow[];
+  } | null>(null);
 
   useEffect(() => {
     function loadStats() {
@@ -142,7 +138,6 @@ export function AdminDashboard() {
                 </a>
               </div>
               <div ref={dashboardImage.ref} className="flex flex-col gap-6 bg-neutral-50 p-1">
-                <SurveyInsights stats={stats} />
                 <StatsCards stats={stats} />
                 <CombinedPrizesSummary prizes={stats?.prizeBreakdown} />
               </div>
