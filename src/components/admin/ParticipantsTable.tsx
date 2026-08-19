@@ -175,20 +175,20 @@ export function ParticipantsTable({
         <table className="w-full min-w-[1500px] text-left text-[12.5px]">
           <thead>
             <tr className="border-b border-neutral-100 text-neutral-400">
-              {showRoundColumn && <th className="py-2 pr-3 font-semibold">회차</th>}
-              <th className="py-2 pr-3 font-semibold">응모번호</th>
-              <th className="py-2 pr-3 font-semibold">참여시간</th>
-              <th className="py-2 pr-3 font-semibold">이름</th>
-              <th className="py-2 pr-3 font-semibold">회사 / 직무</th>
-              <th className="py-2 pr-3 font-semibold">Q1. 관심 블록/필지</th>
-              <th className="py-2 pr-3 font-semibold">Q2. 입주 결정 요소</th>
-              <th className="py-2 pr-3 font-semibold">R&amp;D 부서</th>
-              <th className="py-2 pr-3 font-semibold">본사/연구실 위치</th>
-              <th className="py-2 pr-3 font-semibold">휴대전화</th>
-              <th className="py-2 pr-3 font-semibold">이메일</th>
-              <th className="py-2 pr-3 font-semibold">당첨</th>
-              <th className="py-2 pr-3 font-semibold">수령</th>
-              <th className="py-2 pr-3 font-semibold">관리</th>
+              {showRoundColumn && <th className="whitespace-nowrap py-2 pr-3 font-semibold">회차</th>}
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">응모번호</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">참여시간</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">이름</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">회사 / 직무</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">Q1. 관심 블록/필지</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">Q2. 입주 결정 요소</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">R&amp;D 부서</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">본사/연구실 위치</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">휴대전화</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">이메일</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">당첨</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">수령</th>
+              <th className="whitespace-nowrap py-2 pr-3 font-semibold">관리</th>
             </tr>
           </thead>
           <tbody>
