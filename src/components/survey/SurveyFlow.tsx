@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { SURVEY_QUESTIONS, SURVEY_UI_TEXT, type Lang } from "@/lib/config/survey-questions";
@@ -9,7 +9,7 @@ import { StepQuestion } from "./StepQuestion";
 import { ParticipantInfoStep, isCompanionValid, type CompanionInfo, type ParticipantInfo } from "./ParticipantInfoStep";
 import { ConsentStep } from "./ConsentStep";
 
-type Phase = "intro" | "questions" | "info" | "consent" | "submitting" | "error";
+type Phase = "loading" | "closed" | "intro" | "questions" | "info" | "consent" | "submitting" | "error";
 
 const EMPTY_INFO: ParticipantInfo = {
   name: "",
@@ -26,7 +26,7 @@ const EMPTY_INFO: ParticipantInfo = {
 
 export function SurveyFlow() {
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>("intro");
+  const [phase, setPhase] = useState<Phase>("loading");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [info, setInfo] = useState<ParticipantInfo>(EMPTY_INFO);
@@ -38,6 +38,22 @@ export function SurveyFlow() {
   const t = SURVEY_UI_TEXT;
 
   const totalSteps = SURVEY_QUESTIONS.length + 2; // 질문들 + 정보입력 + 동의
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/prizes")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setPhase(data.surveyClosed ? "closed" : "intro");
+      })
+      .catch(() => {
+        if (!cancelled) setPhase("intro");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function currentStepNumber() {
     if (phase === "questions") return questionIndex + 1;
@@ -162,6 +178,14 @@ export function SurveyFlow() {
     }
   }
 
+  if (phase === "loading") {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-sh-blue" />
+      </div>
+    );
+  }
+
   function LanguageToggle() {
     return (
       <button
@@ -171,6 +195,18 @@ export function SurveyFlow() {
       >
         {t.langToggle[lang]}
       </button>
+    );
+  }
+
+  if (phase === "closed") {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
+        <span className="text-[13px] font-bold tracking-widest text-sh-blue">SH · LUCKY DRAW</span>
+        <h1 className="text-2xl font-extrabold text-neutral-900">{t.closedTitle[lang]}</h1>
+        <p className="text-[14px] leading-relaxed text-neutral-500 whitespace-pre-line">
+          {t.closedBody[lang]}
+        </p>
+      </div>
     );
   }
 
