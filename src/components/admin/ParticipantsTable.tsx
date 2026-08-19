@@ -63,17 +63,27 @@ export function ParticipantsTable({
   readOnly = false,
   showRoundColumn = false,
 }: ParticipantsTableProps = {}) {
+  const PAGE_SIZE = 100;
   const [rows, setRows] = useState<ParticipantRow[]>([]);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function load() {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  async function load(pageToLoad: number) {
     setLoading(true);
-    const params = new URLSearchParams({ q, filter, page: "1", pageSize: "100", ...extraParams });
+    const params = new URLSearchParams({
+      q,
+      filter,
+      page: String(pageToLoad),
+      pageSize: String(PAGE_SIZE),
+      ...extraParams,
+    });
     const res = await fetch(`${apiBase}?${params.toString()}`);
     const data = await res.json();
     setRows(data.participants ?? []);
@@ -81,11 +91,16 @@ export function ParticipantsTable({
     setLoading(false);
   }
 
+  // 검색어/필터가 바뀌면 1페이지부터 다시 본다. (page 상태 변경은 아래 두번째 effect가 이어서 처리)
   useEffect(() => {
-    const timer = setTimeout(load, 300);
+    setPage((prev) => (prev === 1 ? prev : 1));
+  }, [q, filter]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => load(page), 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, filter]);
+  }, [q, filter, page]);
 
   async function toggleReceived(id: string, current: boolean) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, received: !current } : r)));
@@ -326,6 +341,33 @@ export function ParticipantsTable({
           </tbody>
         </table>
       </div>
+
+      {total > 0 && (
+        <div className="mt-4 flex items-center justify-between text-[12.5px] text-neutral-500">
+          <span>
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} / 총 {total}명
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-lg border border-neutral-200 px-3 py-1.5 font-semibold text-neutral-600 disabled:opacity-30"
+            >
+              이전
+            </button>
+            <span className="font-semibold text-neutral-700">
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="rounded-lg border border-neutral-200 px-3 py-1.5 font-semibold text-neutral-600 disabled:opacity-30"
+            >
+              다음
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
