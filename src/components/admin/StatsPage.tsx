@@ -8,6 +8,7 @@ import {
   SURVEY_QUESTIONS,
   type SurveyOption,
 } from "@/lib/config/survey-questions";
+import { useImageDownload } from "@/lib/utils/use-image-download";
 
 type CountMap = Record<string, number>;
 
@@ -139,6 +140,7 @@ function CrossTabTable({
 
 export function StatsPage() {
   const [stats, setStats] = useState<DetailedStats | null>(null);
+  const image = useImageDownload("SH_LUCKY_DRAW_설문통계");
 
   useEffect(() => {
     fetch("/api/admin/stats/detailed")
@@ -150,12 +152,21 @@ export function StatsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h2 className="text-[16px] font-bold text-neutral-900">설문 통계 분석</h2>
-        <a
-          href="/api/admin/stats/detailed/export"
-          className="whitespace-nowrap rounded-lg bg-sh-blue px-4 py-2 text-[13px] font-bold text-white"
-        >
-          Excel 다운로드
-        </a>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={image.handleDownload}
+            disabled={image.saving}
+            className="whitespace-nowrap rounded-lg border border-neutral-200 bg-white px-4 py-2 text-[13px] font-bold text-neutral-600 disabled:opacity-40"
+          >
+            {image.saving ? "저장 중..." : "이미지 다운로드"}
+          </button>
+          <a
+            href="/api/admin/stats/detailed/export"
+            className="whitespace-nowrap rounded-lg bg-sh-blue px-4 py-2 text-[13px] font-bold text-white"
+          >
+            Excel 다운로드
+          </a>
+        </div>
       </div>
 
       {!stats ? (
@@ -163,7 +174,7 @@ export function StatsPage() {
           불러오는 중...
         </div>
       ) : (
-        <>
+        <div ref={image.ref} className="flex flex-col gap-6 bg-neutral-50 p-1">
           <div>
             <div className="mb-3 flex items-center gap-2">
               <span className="rounded-full bg-sh-blue/10 px-2.5 py-1 text-[11px] font-bold text-sh-blue">
@@ -227,7 +238,7 @@ export function StatsPage() {
               />
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

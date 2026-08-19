@@ -11,6 +11,7 @@ import { StatsPage } from "./StatsPage";
 import { SettingsPanel } from "./SettingsPanel";
 import { ResetPanel } from "./ResetPanel";
 import { StartRoundPanel } from "./StartRoundPanel";
+import { useImageDownload } from "@/lib/utils/use-image-download";
 
 type Tab = "dashboard" | "stats" | "round1" | "round2" | "round3" | "round4" | "all" | "prizes" | "settings";
 
@@ -36,6 +37,7 @@ type PrizeBreakdownRow = {
 
 export function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("dashboard");
+  const dashboardImage = useImageDownload("SH_LUCKY_DRAW_대시보드");
   const [stats, setStats] = useState<
     | ({
         totalParticipants: number;
@@ -124,7 +126,14 @@ export function AdminDashboard() {
 
           {tab === "dashboard" && (
             <>
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  onClick={dashboardImage.handleDownload}
+                  disabled={dashboardImage.saving}
+                  className="whitespace-nowrap rounded-lg border border-neutral-200 bg-white px-4 py-2 text-[13px] font-bold text-neutral-600 disabled:opacity-40"
+                >
+                  {dashboardImage.saving ? "저장 중..." : "이미지 다운로드"}
+                </button>
                 <a
                   href="/api/admin/stats/export"
                   className="whitespace-nowrap rounded-lg bg-sh-blue px-4 py-2 text-[13px] font-bold text-white"
@@ -132,9 +141,11 @@ export function AdminDashboard() {
                   통계 Excel 다운로드
                 </a>
               </div>
-              <SurveyInsights stats={stats} />
-              <StatsCards stats={stats} />
-              <CombinedPrizesSummary prizes={stats?.prizeBreakdown} />
+              <div ref={dashboardImage.ref} className="flex flex-col gap-6 bg-neutral-50 p-1">
+                <SurveyInsights stats={stats} />
+                <StatsCards stats={stats} />
+                <CombinedPrizesSummary prizes={stats?.prizeBreakdown} />
+              </div>
             </>
           )}
           {tab === "stats" && <StatsPage />}
