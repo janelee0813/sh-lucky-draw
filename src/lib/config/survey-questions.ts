@@ -32,7 +32,7 @@ export interface SurveyQuestion {
 const MAGOK_NOTICE =
   "마곡일반산업단지 내 복합용지는 본사 사옥, R&D 연구소(산업시설 50%)과 근린생활, 업무, 의료시설(지원시설 50%) 등으로 입체적 복합개발이 가능한 토지입니다";
 const MAGOK_NOTICE_EN =
-  "Mixed-use sites within the Magok General Industrial Complex allow multi-purpose development such as corporate headquarters, R&D labs (50% industrial use), and neighborhood, business, or medical facilities (50% support use).";
+  "The Magog General Industrial Complex Multi-Purpose Plot allows for multi-dimensional complex development. The space can be split 50/50: 50% for corporate headquarters and R&D centers (industrial facilities) and 50% for neighborhood amenities, offices, and medical clinics (support facilities).";
 
 export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
@@ -40,22 +40,22 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     notice: MAGOK_NOTICE,
     noticeEn: MAGOK_NOTICE_EN,
     title: "마곡 일반산업단지 내 관심 있는\n부지(위치)가 있다면 선택해 주세요.",
-    titleEn: "If there is a site (location) you're\ninterested in within the Magok\nGeneral Industrial Complex, please select it.",
+    titleEn: "Please select your plot (location) of interest within the Magog General Industrial Complex:",
     options: [
       {
         value: "anchor_block",
         label: "① 5호선 발산역 대형 부지(L4, L5, L6)",
-        labelEn: "① Large site near Balsan Station, Line 5 (L4, L5, L6)",
+        labelEn: "① Large Plots near Balsan Station, Line 5 (L4, L5, L6)",
       },
       {
         value: "small_lot_balsan",
         label: "② 5호선 발산역 인접 중소형 부지(L5-3,4,5,6 / L7-1,2,3)",
-        labelEn: "② Small/mid-size site near Balsan Station, Line 5 (L5-3,4,5,6 / L7-1,2,3)",
+        labelEn: "② Small & Medium Plots adjacent to Balsan Station, Line 5 (L5-3,4,5,6 / L7-1,2,3)",
       },
       {
         value: "small_lot_olympic",
         label: "③ 올림픽대로 인접 중소형 부지(L1-1,2,3, L2-1,2,3, L3-1,2,3)",
-        labelEn: "③ Small/mid-size site near Olympic-daero (L1-1,2,3, L2-1,2,3, L3-1,2,3)",
+        labelEn: "③ Small & Medium Plots adjacent to Olympic Expressway (L1-1,2,3, L2-1,2,3, L3-1,2,3)",
       },
     ],
   },
@@ -64,12 +64,12 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     notice: MAGOK_NOTICE,
     noticeEn: MAGOK_NOTICE_EN,
     title: "가장 중요한 입주 결정 요소를\n선택해 주세요.",
-    titleEn: "Please select the most important\nfactor in your relocation decision.",
+    titleEn: "Please select the most critical factor in your decision to move in:",
     options: [
-      { value: "transport", label: "대중교통 및 접근성", labelEn: "Public transit & accessibility" },
-      { value: "price", label: "공급단가 및 분양가", labelEn: "Supply price & sale price" },
-      { value: "cluster", label: "주변 AI, IT 기업과의 집적도", labelEn: "Proximity to nearby AI/IT companies" },
-      { value: "infra", label: "시설 인프라", labelEn: "Facility infrastructure" },
+      { value: "transport", label: "대중교통 및 접근성", labelEn: "Public transport and accessibility" },
+      { value: "price", label: "공급단가 및 분양가", labelEn: "Supply unit price and sales price" },
+      { value: "cluster", label: "주변 AI, IT 기업과의 집적도", labelEn: "Proximity to neighboring AI and IT companies" },
+      { value: "infra", label: "시설 인프라", labelEn: "Infrastructure and facilities" },
     ],
   },
 ];
@@ -174,11 +174,11 @@ export const SURVEY_UI_TEXT = {
   },
   introHeading: {
     ko: "설문에 참여하고\nLUCKY DRAW에 도전하세요.",
-    en: "Take the survey and\ntry your luck at the LUCKY DRAW.",
+    en: "Take our survey and\nenter the LUCKY DRAW!",
   },
   introDesc: {
     ko: "간단한 설문을 완료하시면\n꽝 없는 이벤트 응모권을 드립니다.",
-    en: "Complete a short survey to receive\na no-blank event entry ticket.",
+    en: "Complete a quick survey to win\na guaranteed prize.",
   },
   introButton: { ko: "설문 참여하기", en: "Take the Survey" },
   backAriaLabel: { ko: "이전 단계로", en: "Go back" },
