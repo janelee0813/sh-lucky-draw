@@ -3,20 +3,23 @@
 import { useEffect, useState } from "react";
 import { StatsCards } from "./StatsCards";
 import { SurveyInsights, type SurveyStats } from "./SurveyInsights";
-import { ParticipantsTable } from "./ParticipantsTable";
-import { Round1ParticipantsTable } from "./Round1ParticipantsTable";
+import { RoundParticipantsTable } from "./RoundParticipantsTable";
+import { AllParticipantsTable } from "./AllParticipantsTable";
 import { PrizesTable } from "./PrizesTable";
 import { CombinedPrizesSummary } from "./CombinedPrizesSummary";
 import { SettingsPanel } from "./SettingsPanel";
 import { ResetPanel } from "./ResetPanel";
 import { StartRoundPanel } from "./StartRoundPanel";
 
-type Tab = "dashboard" | "participants" | "round1" | "prizes" | "settings";
+type Tab = "dashboard" | "round1" | "round2" | "round3" | "round4" | "all" | "prizes" | "settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "DASHBOARD" },
-  { key: "participants", label: "2차 참여자" },
-  { key: "round1", label: "1차 참여자" },
+  { key: "round1", label: "ROUND 1" },
+  { key: "round2", label: "ROUND 2" },
+  { key: "round3", label: "ROUND 3" },
+  { key: "round4", label: "ROUND 4" },
+  { key: "all", label: "ALL PARTICIPANTS" },
   { key: "prizes", label: "PRIZES" },
   { key: "settings", label: "SETTINGS" },
 ];
@@ -132,8 +135,11 @@ export function AdminDashboard() {
               <CombinedPrizesSummary prizes={stats?.prizeBreakdown} />
             </>
           )}
-          {tab === "participants" && <ParticipantsTable title="2차 참가자 리스트 및 설문결과" />}
-          {tab === "round1" && <Round1ParticipantsTable />}
+          {tab === "round1" && <RoundParticipantsTable round={1} />}
+          {tab === "round2" && <RoundParticipantsTable round={2} />}
+          {tab === "round3" && <RoundParticipantsTable round={3} />}
+          {tab === "round4" && <RoundParticipantsTable round={4} />}
+          {tab === "all" && <AllParticipantsTable />}
           {tab === "prizes" && <PrizesTable />}
           {tab === "settings" && (
             <>

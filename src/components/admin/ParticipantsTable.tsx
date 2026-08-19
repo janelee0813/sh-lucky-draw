@@ -13,6 +13,7 @@ import {
 type ParticipantRow = {
   id: string;
   ticket_number: number;
+  round?: number;
   created_at: string;
   name: string;
   company: string | null;
@@ -51,6 +52,7 @@ type ParticipantsTableProps = {
   exportUrl?: string;
   title?: string;
   readOnly?: boolean;
+  showRoundColumn?: boolean;
 };
 
 export function ParticipantsTable({
@@ -59,6 +61,7 @@ export function ParticipantsTable({
   exportUrl = "/api/admin/participants/export",
   title = "참가자 리스트 및 설문결과",
   readOnly = false,
+  showRoundColumn = false,
 }: ParticipantsTableProps = {}) {
   const [rows, setRows] = useState<ParticipantRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -157,6 +160,7 @@ export function ParticipantsTable({
         <table className="w-full min-w-[1500px] text-left text-[12.5px]">
           <thead>
             <tr className="border-b border-neutral-100 text-neutral-400">
+              {showRoundColumn && <th className="py-2 pr-3 font-semibold">회차</th>}
               <th className="py-2 pr-3 font-semibold">응모번호</th>
               <th className="py-2 pr-3 font-semibold">참여시간</th>
               <th className="py-2 pr-3 font-semibold">이름</th>
@@ -175,13 +179,13 @@ export function ParticipantsTable({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={13} className="py-8 text-center text-neutral-300">
+                <td colSpan={showRoundColumn ? 14 : 13} className="py-8 text-center text-neutral-300">
                   불러오는 중...
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={13} className="py-8 text-center text-neutral-300">
+                <td colSpan={showRoundColumn ? 14 : 13} className="py-8 text-center text-neutral-300">
                   참가자가 없습니다.
                 </td>
               </tr>
@@ -193,6 +197,13 @@ export function ParticipantsTable({
                 return (
                   <Fragment key={r.id}>
                     <tr className="border-b border-neutral-50">
+                      {showRoundColumn && (
+                        <td className="whitespace-nowrap py-2 pr-3">
+                          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-bold text-neutral-500">
+                            {r.round ?? "-"}차
+                          </span>
+                        </td>
+                      )}
                       <td className="whitespace-nowrap py-2 pr-3 font-bold text-neutral-900">
                         {String(r.ticket_number).padStart(4, "0")}
                         {r.is_test && (
@@ -280,7 +291,7 @@ export function ParticipantsTable({
                     </tr>
                     {isExpanded && (
                       <tr className="border-b border-neutral-100 bg-neutral-50">
-                        <td colSpan={13} className="px-3 py-4">
+                        <td colSpan={showRoundColumn ? 14 : 13} className="px-3 py-4">
                           <div className="grid grid-cols-1 gap-3 text-[12.5px] sm:grid-cols-2 lg:grid-cols-3">
                             <div>
                               <div className="font-semibold text-neutral-400">Q1 전체 응답</div>
