@@ -15,7 +15,7 @@ type Tab = "dashboard" | "participants" | "round1" | "prizes" | "settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "DASHBOARD" },
-  { key: "participants", label: "PARTICIPANTS" },
+  { key: "participants", label: "2차 참여자" },
   { key: "round1", label: "1차 참여자" },
   { key: "prizes", label: "PRIZES" },
   { key: "settings", label: "SETTINGS" },
@@ -132,7 +132,7 @@ export function AdminDashboard() {
               <CombinedPrizesSummary prizes={stats?.prizeBreakdown} />
             </>
           )}
-          {tab === "participants" && <ParticipantsTable />}
+          {tab === "participants" && <ParticipantsTable title="2차 참가자 리스트 및 설문결과" />}
           {tab === "round1" && <Round1ParticipantsTable />}
           {tab === "prizes" && <PrizesTable />}
           {tab === "settings" && (
