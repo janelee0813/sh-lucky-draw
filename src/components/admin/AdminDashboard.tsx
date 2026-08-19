@@ -4,19 +4,30 @@ import { useEffect, useState } from "react";
 import { StatsCards } from "./StatsCards";
 import { SurveyInsights, type SurveyStats } from "./SurveyInsights";
 import { ParticipantsTable } from "./ParticipantsTable";
+import { Round1ParticipantsTable } from "./Round1ParticipantsTable";
 import { PrizesTable } from "./PrizesTable";
+import { CombinedPrizesSummary } from "./CombinedPrizesSummary";
 import { SettingsPanel } from "./SettingsPanel";
 import { ResetPanel } from "./ResetPanel";
 import { StartRoundPanel } from "./StartRoundPanel";
 
-type Tab = "dashboard" | "participants" | "prizes" | "settings";
+type Tab = "dashboard" | "participants" | "round1" | "prizes" | "settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "DASHBOARD" },
   { key: "participants", label: "PARTICIPANTS" },
+  { key: "round1", label: "1차 참여자" },
   { key: "prizes", label: "PRIZES" },
   { key: "settings", label: "SETTINGS" },
 ];
+
+type PrizeBreakdownRow = {
+  rank: number;
+  name: string;
+  initial_quantity: number;
+  won_quantity: number;
+  remaining_quantity: number;
+};
 
 export function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -26,6 +37,7 @@ export function AdminDashboard() {
         drawnCount: number;
         pendingDrawCount: number;
         remainingPrizes: number;
+        prizeBreakdown: PrizeBreakdownRow[];
       } & SurveyStats)
     | null
   >(null);
@@ -117,10 +129,11 @@ export function AdminDashboard() {
               </div>
               <SurveyInsights stats={stats} />
               <StatsCards stats={stats} />
-              <PrizesTable />
+              <CombinedPrizesSummary prizes={stats?.prizeBreakdown} />
             </>
           )}
           {tab === "participants" && <ParticipantsTable />}
+          {tab === "round1" && <Round1ParticipantsTable />}
           {tab === "prizes" && <PrizesTable />}
           {tab === "settings" && (
             <>

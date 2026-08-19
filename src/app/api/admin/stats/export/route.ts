@@ -12,6 +12,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// 화면(DASHBOARD)과 동일하게 1차(보관) + 2차(라이브) 합산 수치로 내려받는다.
 export async function GET() {
   const unauthorized = requireAdminResponse();
   if (unauthorized) return unauthorized;
@@ -19,36 +20,69 @@ export async function GET() {
   const supabase = getSupabaseServiceClient();
 
   const [
-    { count: totalParticipants },
-    { count: drawnCount },
-    { data: prizes },
-    { data: surveyRows },
+    { count: liveTotal },
+    { count: liveDrawn },
+    { data: livePrizes },
+    { data: liveSurveyRows },
+    { count: archivedTotal },
+    { count: archivedDrawn },
+    { data: archivedPrizes },
+    { data: archivedSurveyRows },
   ] = await Promise.all([
     supabase.from("participants").select("id", { count: "exact", head: true }),
     supabase.from("participants").select("id", { count: "exact", head: true }).not("drawn_at", "is", null),
-    supabase.from("prizes").select("rank, name, initial_quantity, remaining_quantity").order("display_order"),
+    supabase.from("prizes").select("rank, name, initial_quantity, remaining_quantity, display_order").order("display_order"),
     supabase.from("participants").select("survey_answer_1, survey_answer_2, job_role, rnd_dept, hq_location"),
+    supabase.from("participants_archive").select("id", { count: "exact", head: true }),
+    supabase.from("participants_archive").select("id", { count: "exact", head: true }).not("drawn_at", "is", null),
+    supabase.from("prizes_archive").select("rank, name, initial_quantity, remaining_quantity, display_order"),
+    supabase.from("participants_archive").select("survey_answer_1, survey_answer_2, job_role, rnd_dept, hq_location"),
   ]);
 
-  const total = totalParticipants ?? 0;
-  const drawn = drawnCount ?? 0;
-  const remaining = (prizes ?? []).reduce((sum, p) => sum + p.remaining_quantity, 0);
+  const total = (liveTotal ?? 0) + (archivedTotal ?? 0);
+  const drawn = (liveDrawn ?? 0) + (archivedDrawn ?? 0);
+  const remaining = (livePrizes ?? []).reduce((sum, p) => sum + p.remaining_quantity, 0);
 
-  function countBy(key: "survey_answer_1" | "survey_answer_2" | "job_role" | "rnd_dept" | "hq_location") {
+  type SurveyRow = { survey_answer_1: string | null; survey_answer_2: string | null; job_role: string | null; rnd_dept: string | null; hq_location: string | null };
+
+  function countBy(key: "survey_answer_1" | "survey_answer_2" | "job_role" | "rnd_dept" | "hq_location", ...rowSets: (SurveyRow[] | null)[]) {
     const counts: Record<string, number> = {};
-    for (const row of surveyRows ?? []) {
-      const value = row[key];
-      if (!value) continue;
-      counts[value] = (counts[value] ?? 0) + 1;
+    for (const rows of rowSets) {
+      for (const row of rows ?? []) {
+        const value = row[key];
+        if (!value) continue;
+        counts[value] = (counts[value] ?? 0) + 1;
+      }
     }
     return counts;
   }
 
-  const a1 = countBy("survey_answer_1");
-  const a2 = countBy("survey_answer_2");
-  const jobRole = countBy("job_role");
-  const rndDept = countBy("rnd_dept");
-  const hqLocation = countBy("hq_location");
+  type PrizeRow = { rank: number; name: string; initial_quantity: number; remaining_quantity: number; display_order: number };
+  const prizeMap = new Map<string, { rank: number; name: string; display_order: number; initial_quantity: number; remaining_quantity: number }>();
+  function addPrizeRows(rows: PrizeRow[] | null, countsAsRemaining: boolean) {
+    for (const p of rows ?? []) {
+      const key = `${p.rank}__${p.name}`;
+      const existing = prizeMap.get(key) ?? {
+        rank: p.rank,
+        name: p.name,
+        display_order: p.display_order,
+        initial_quantity: 0,
+        remaining_quantity: 0,
+      };
+      existing.initial_quantity += p.initial_quantity;
+      if (countsAsRemaining) existing.remaining_quantity += p.remaining_quantity;
+      prizeMap.set(key, existing);
+    }
+  }
+  addPrizeRows(archivedPrizes, false);
+  addPrizeRows(livePrizes, true);
+  const prizes = Array.from(prizeMap.values()).sort((a, b) => a.display_order - b.display_order);
+
+  const a1 = countBy("survey_answer_1", liveSurveyRows, archivedSurveyRows);
+  const a2 = countBy("survey_answer_2", liveSurveyRows, archivedSurveyRows);
+  const jobRole = countBy("job_role", liveSurveyRows, archivedSurveyRows);
+  const rndDept = countBy("rnd_dept", liveSurveyRows, archivedSurveyRows);
+  const hqLocation = countBy("hq_location", liveSurveyRows, archivedSurveyRows);
 
   const rows: (string | number)[][] = [];
   rows.push(["SH AI Summit Seoul & Expo LUCKY DRAW - 대시보드 통계"]);

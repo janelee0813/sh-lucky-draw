@@ -44,7 +44,22 @@ const FILTERS = [
   { value: "rank5", label: "5등" },
 ];
 
-export function ParticipantsTable() {
+type ParticipantsTableProps = {
+  // 라이브 참가자(기본값)와 보관된 지난 라운드 참가자를 같은 화면으로 보여주기 위한 옵션.
+  apiBase?: string;
+  extraParams?: Record<string, string>;
+  exportUrl?: string;
+  title?: string;
+  readOnly?: boolean;
+};
+
+export function ParticipantsTable({
+  apiBase = "/api/admin/participants",
+  extraParams = {},
+  exportUrl = "/api/admin/participants/export",
+  title = "참가자 리스트 및 설문결과",
+  readOnly = false,
+}: ParticipantsTableProps = {}) {
   const [rows, setRows] = useState<ParticipantRow[]>([]);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
@@ -55,8 +70,8 @@ export function ParticipantsTable() {
 
   async function load() {
     setLoading(true);
-    const params = new URLSearchParams({ q, filter, page: "1", pageSize: "100" });
-    const res = await fetch(`/api/admin/participants?${params.toString()}`);
+    const params = new URLSearchParams({ q, filter, page: "1", pageSize: "100", ...extraParams });
+    const res = await fetch(`${apiBase}?${params.toString()}`);
     const data = await res.json();
     setRows(data.participants ?? []);
     setTotal(data.total ?? 0);
@@ -104,7 +119,7 @@ export function ParticipantsTable() {
     <div className="rounded-2xl border border-neutral-200 bg-white p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-[16px] font-bold text-neutral-900">
-          참가자 리스트 및 설문결과 <span className="text-neutral-400 font-normal">({total}명)</span>
+          {title} <span className="text-neutral-400 font-normal">({total}명)</span>
         </h2>
         <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
           <input
@@ -114,7 +129,7 @@ export function ParticipantsTable() {
             className="w-full max-w-[280px] rounded-lg border border-neutral-200 px-3 py-2 text-[13px] outline-none focus:border-sh-blue"
           />
           <a
-            href="/api/admin/participants/export"
+            href={exportUrl}
             className="whitespace-nowrap rounded-lg bg-sh-blue px-4 py-2 text-[13px] font-bold text-white"
           >
             Excel 다운로드
@@ -219,16 +234,26 @@ export function ParticipantsTable() {
                       </td>
                       <td className="whitespace-nowrap py-2 pr-3">
                         {r.prizes ? (
-                          <button
-                            onClick={() => toggleReceived(r.id, r.received)}
-                            className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                              r.received
-                                ? "bg-sh-blue/10 text-sh-blue"
-                                : "bg-neutral-100 text-neutral-400"
-                            }`}
-                          >
-                            {r.received ? "수령완료" : "미수령"}
-                          </button>
+                          readOnly ? (
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                                r.received ? "bg-sh-blue/10 text-sh-blue" : "bg-neutral-100 text-neutral-400"
+                              }`}
+                            >
+                              {r.received ? "수령완료" : "미수령"}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => toggleReceived(r.id, r.received)}
+                              className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                                r.received
+                                  ? "bg-sh-blue/10 text-sh-blue"
+                                  : "bg-neutral-100 text-neutral-400"
+                              }`}
+                            >
+                              {r.received ? "수령완료" : "미수령"}
+                            </button>
+                          )
                         ) : (
                           <span className="text-neutral-200">-</span>
                         )}
@@ -241,13 +266,15 @@ export function ParticipantsTable() {
                           >
                             {isExpanded ? "접기" : "상세"}
                           </button>
-                          <button
-                            onClick={() => handleDelete(r)}
-                            disabled={deletingId === r.id}
-                            className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-500 hover:bg-red-100 disabled:opacity-40"
-                          >
-                            삭제
-                          </button>
+                          {!readOnly && (
+                            <button
+                              onClick={() => handleDelete(r)}
+                              disabled={deletingId === r.id}
+                              className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-500 hover:bg-red-100 disabled:opacity-40"
+                            >
+                              삭제
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
