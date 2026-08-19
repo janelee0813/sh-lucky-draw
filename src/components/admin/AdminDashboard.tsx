@@ -7,14 +7,16 @@ import { RoundParticipantsTable } from "./RoundParticipantsTable";
 import { AllParticipantsTable } from "./AllParticipantsTable";
 import { PrizesTable } from "./PrizesTable";
 import { CombinedPrizesSummary } from "./CombinedPrizesSummary";
+import { StatsPage } from "./StatsPage";
 import { SettingsPanel } from "./SettingsPanel";
 import { ResetPanel } from "./ResetPanel";
 import { StartRoundPanel } from "./StartRoundPanel";
 
-type Tab = "dashboard" | "round1" | "round2" | "round3" | "round4" | "all" | "prizes" | "settings";
+type Tab = "dashboard" | "stats" | "round1" | "round2" | "round3" | "round4" | "all" | "prizes" | "settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "dashboard", label: "DASHBOARD" },
+  { key: "stats", label: "STATS" },
   { key: "round1", label: "ROUND 1" },
   { key: "round2", label: "ROUND 2" },
   { key: "round3", label: "ROUND 3" },
@@ -135,6 +137,7 @@ export function AdminDashboard() {
               <CombinedPrizesSummary prizes={stats?.prizeBreakdown} />
             </>
           )}
+          {tab === "stats" && <StatsPage />}
           {tab === "round1" && <RoundParticipantsTable round={1} />}
           {tab === "round2" && <RoundParticipantsTable round={2} />}
           {tab === "round3" && <RoundParticipantsTable round={3} />}
