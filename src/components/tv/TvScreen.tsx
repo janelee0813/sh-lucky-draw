@@ -27,6 +27,17 @@ export function TvScreen() {
   const ballCanvasRef = useRef<BallCanvasHandle>(null);
   const rouletteCanvasRef = useRef<RouletteCanvasHandle>(null);
 
+  // 추첨 애니메이션이 도는 동안에는 실시간/폴링으로 들어오는 재고 갱신을 화면에 바로
+  // 반영하지 않는다. (그렇지 않으면 룰렛이 멈추기 전에 우측 상품 패널 숫자가 먼저 줄어들어
+  // 결과가 미리 보이는 문제가 있었다) 애니메이션이 결과를 보여주는 순간(onRevealReady)에
+  // 쌓아둔 최신 재고를 한 번에 반영한다.
+  const isDrawingRef = useRef(false);
+  const pendingPrizesRef = useRef<PublicPrizeStatus[] | null>(null);
+  const prizesRef = useRef<PublicPrizeStatus[]>([]);
+  useEffect(() => {
+    prizesRef.current = prizes;
+  }, [prizes]);
+
   useEffect(() => {
     fetch("/api/staff/status")
       .then((res) => res.json())
@@ -40,7 +51,13 @@ export function TvScreen() {
       fetch("/api/prizes")
         .then((res) => res.json())
         .then((data) => {
-          if (!cancelled) setPrizes(data.prizes ?? []);
+          if (cancelled) return;
+          const next = data.prizes ?? [];
+          if (isDrawingRef.current) {
+            pendingPrizesRef.current = next;
+          } else {
+            setPrizes(next);
+          }
         })
         .catch(() => {});
     }
@@ -61,11 +78,15 @@ export function TvScreen() {
           { event: "UPDATE", schema: "public", table: "prizes" },
           (payload) => {
             const updated = payload.new as any;
-            setPrizes((prev) =>
+            const applyUpdate = (prev: PublicPrizeStatus[]) =>
               prev.map((p) =>
                 p.id === updated.id ? { ...p, remaining_quantity: updated.remaining_quantity } : p
-              )
-            );
+              );
+            if (isDrawingRef.current) {
+              pendingPrizesRef.current = applyUpdate(pendingPrizesRef.current ?? prizesRef.current);
+            } else {
+              setPrizes(applyUpdate);
+            }
           }
         )
         .subscribe();
@@ -146,15 +167,21 @@ export function TvScreen() {
 
   const handleStartDraw = useCallback(async (ticketNumber: string) => {
     setModal("none");
+    // 추첨 애니메이션이 끝나기 전까지는 재고 갱신이 화면에 새어나가지 않도록 막는다.
+    isDrawingRef.current = true;
     const outcome = await performDraw(ticketNumber);
 
     if (outcome.type === "error") {
+      isDrawingRef.current = false;
+      pendingPrizesRef.current = null;
       setErrorInfo({ title: outcome.title, description: outcome.description });
       setModal("error");
       return;
     }
 
     if (outcome.type === "already") {
+      isDrawingRef.current = false;
+      pendingPrizesRef.current = null;
       setErrorInfo({
         title: "이미 이벤트에 참여한 응모권입니다.",
         description: `추첨 결과: ${outcome.rank}등 · ${outcome.name}`,
@@ -169,6 +196,12 @@ export function TvScreen() {
   }, [displayMode]);
 
   const handleRevealReady = useCallback((_rank: number) => {
+    // 룰렛/공이 결과를 보여주는 바로 이 순간에, 그동안 쌓아뒀던 최신 재고를 한 번에 반영한다.
+    isDrawingRef.current = false;
+    if (pendingPrizesRef.current) {
+      setPrizes(pendingPrizesRef.current);
+      pendingPrizesRef.current = null;
+    }
     setModal("result");
   }, []);
 
