@@ -41,7 +41,6 @@ export function AdminDashboard() {
     totalParticipants: number;
     drawnCount: number;
     pendingDrawCount: number;
-    remainingPrizes: number;
     prizeBreakdown: PrizeBreakdownRow[];
   } | null>(null);
 
