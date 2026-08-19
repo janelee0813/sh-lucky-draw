@@ -7,6 +7,7 @@ import { ParticipantsTable } from "./ParticipantsTable";
 import { PrizesTable } from "./PrizesTable";
 import { SettingsPanel } from "./SettingsPanel";
 import { ResetPanel } from "./ResetPanel";
+import { StartRoundPanel } from "./StartRoundPanel";
 
 type Tab = "dashboard" | "participants" | "prizes" | "settings";
 
@@ -124,6 +125,7 @@ export function AdminDashboard() {
           {tab === "settings" && (
             <>
               <SettingsPanel />
+              <StartRoundPanel />
               <ResetPanel />
             </>
           )}
