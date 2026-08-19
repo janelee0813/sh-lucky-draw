@@ -38,7 +38,12 @@ export const EMPTY_COMPANION: CompanionInfo = { name: "", team: "", position: ""
 export const MAX_COMPANIONS = 5;
 
 export function isCompanionValid(c: CompanionInfo): boolean {
-  return c.name.trim().length > 0 && c.phone.trim().length > 0;
+  return (
+    c.name.trim().length > 0 &&
+    c.team.trim().length > 0 &&
+    c.position.trim().length > 0 &&
+    c.phone.trim().length > 0
+  );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -307,6 +312,7 @@ export function ParticipantInfoStep({
                 label={t.companionTeamLabel[lang]}
                 placeholder={t.companionTeamPlaceholder[lang]}
                 type="text"
+                required
                 value={c.team}
                 onChange={(v) => setCompanion(i, "team", v)}
               />
@@ -314,6 +320,7 @@ export function ParticipantInfoStep({
                 label={t.companionPositionLabel[lang]}
                 placeholder={t.companionPositionPlaceholder[lang]}
                 type="text"
+                required
                 value={c.position}
                 onChange={(v) => setCompanion(i, "position", v)}
               />

@@ -5,8 +5,8 @@ import { isValidEmail, isValidPhone, normalizePhone } from "@/lib/utils/ticket-n
 
 const companionSchema = z.object({
   name: z.string().trim().min(1).max(50),
-  team: z.string().trim().max(100).optional().default(""),
-  position: z.string().trim().max(100).optional().default(""),
+  team: z.string().trim().min(1).max(100),
+  position: z.string().trim().min(1).max(100),
   phone: z.string().trim().min(1),
 });
 
