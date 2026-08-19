@@ -32,7 +32,7 @@ export interface SurveyQuestion {
 const MAGOK_NOTICE =
   "마곡일반산업단지 내 복합용지는 본사 사옥, R&D 연구소(산업시설 50%)과 근린생활, 업무, 의료시설(지원시설 50%) 등으로 입체적 복합개발이 가능한 토지입니다";
 const MAGOK_NOTICE_EN =
-  "The Magog General Industrial Complex Multi-Purpose Plot allows for multi-dimensional complex development. The space can be split 50/50: 50% for corporate headquarters and R&D centers (industrial facilities) and 50% for neighborhood amenities, offices, and medical clinics (support facilities).";
+  "The Magok General Industrial Complex Multi-Purpose Plot allows for multi-dimensional complex development. The space can be split 50/50: 50% for corporate headquarters and R&D centers (industrial facilities) and 50% for neighborhood amenities, offices, and medical clinics (support facilities).";
 
 export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
@@ -40,7 +40,7 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     notice: MAGOK_NOTICE,
     noticeEn: MAGOK_NOTICE_EN,
     title: "마곡 일반산업단지 내 관심 있는\n부지(위치)가 있다면 선택해 주세요.",
-    titleEn: "Please select your plot (location) of interest within the Magog General Industrial Complex:",
+    titleEn: "Please select your plot (location) of interest within the Magok General Industrial Complex:",
     options: [
       {
         value: "anchor_block",
