@@ -35,19 +35,35 @@ export async function GET(req: NextRequest) {
   const selectCols =
     "id, ticket_number, name, company, job_role, rnd_dept, rnd_dept_name, rnd_relocation_plan, hq_location, hq_location_other, phone, email, survey_answer_1, survey_answer_2, created_at, drawn_at, prize_id, received, received_at, is_test";
 
-  const [{ data: settings }, { data: liveParticipants }, { data: livePrizes }, { data: archivedParticipants }, { data: archivedPrizes }] =
-    await Promise.all([
-      supabase.from("event_settings").select("current_round").eq("id", 1).maybeSingle(),
-      supabase.from("participants").select(selectCols),
-      supabase.from("prizes").select("id, rank, name"),
-      supabase.from("participants_archive").select(`${selectCols}, archived_round`),
-      supabase.from("prizes_archive").select("id, rank, name"),
-    ]);
+  const [
+    { data: settings },
+    { data: liveParticipants },
+    { data: livePrizes },
+    { data: liveCompanions },
+    { data: archivedParticipants },
+    { data: archivedPrizes },
+    { data: archivedCompanions },
+  ] = await Promise.all([
+    supabase.from("event_settings").select("current_round").eq("id", 1).maybeSingle(),
+    supabase.from("participants").select(selectCols),
+    supabase.from("prizes").select("id, rank, name"),
+    supabase.from("companions").select("participant_id, name, team, position, phone"),
+    supabase.from("participants_archive").select(`${selectCols}, archived_round`),
+    supabase.from("prizes_archive").select("id, rank, name"),
+    supabase.from("companions_archive").select("participant_id, name, team, position, phone"),
+  ]);
 
   const currentRound = settings?.current_round ?? 1;
   const prizeMap = new Map<string, { rank: number; name: string }>();
   for (const p of [...(livePrizes ?? []), ...(archivedPrizes ?? [])]) {
     prizeMap.set(p.id, { rank: p.rank, name: p.name });
+  }
+
+  const companionsMap = new Map<string, { name: string; team: string | null; position: string | null; phone: string }[]>();
+  for (const c of [...(liveCompanions ?? []), ...(archivedCompanions ?? [])]) {
+    const list = companionsMap.get(c.participant_id) ?? [];
+    list.push({ name: c.name, team: c.team, position: c.position, phone: c.phone });
+    companionsMap.set(c.participant_id, list);
   }
 
   const combined: Row[] = [
@@ -82,6 +98,7 @@ export async function GET(req: NextRequest) {
   const participants = filtered.slice(from, from + pageSize).map((r) => ({
     ...r,
     prizes: r.prize_id ? prizeMap.get(r.prize_id) ?? null : null,
+    companions: companionsMap.get(r.id) ?? [],
   }));
 
   return NextResponse.json({ participants, total, page, pageSize });

@@ -3,6 +3,13 @@ import { z } from "zod";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import { isValidEmail, isValidPhone, normalizePhone } from "@/lib/utils/ticket-number";
 
+const companionSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  team: z.string().trim().max(100).optional().default(""),
+  position: z.string().trim().max(100).optional().default(""),
+  phone: z.string().trim().min(1),
+});
+
 const bodySchema = z.object({
   name: z.string().trim().min(1).max(50),
   phone: z.string().trim().min(1),
@@ -17,6 +24,7 @@ const bodySchema = z.object({
   survey_answer_1: z.string().trim().min(1),
   survey_answer_2: z.string().trim().min(1),
   privacy_consent: z.literal(true),
+  companions: z.array(companionSchema).max(5).optional().default([]),
 });
 
 export async function POST(req: NextRequest) {
@@ -43,8 +51,22 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  for (const c of body.companions) {
+    if (!isValidPhone(c.phone)) {
+      return NextResponse.json(
+        { error: "INVALID_PHONE", message: "동반자 휴대전화 번호 형식을 확인해주세요." },
+        { status: 400 }
+      );
+    }
+  }
 
   const phone = normalizePhone(body.phone);
+  const companions = body.companions.map((c) => ({
+    name: c.name,
+    team: c.team || null,
+    position: c.position || null,
+    phone: normalizePhone(c.phone),
+  }));
   const supabase = getSupabaseServiceClient();
 
   const { data, error } = await supabase.rpc("submit_survey", {
@@ -61,6 +83,7 @@ export async function POST(req: NextRequest) {
     p_answer1: body.survey_answer_1,
     p_answer2: body.survey_answer_2,
     p_consent: true,
+    p_companions: companions,
   });
 
   if (error) {

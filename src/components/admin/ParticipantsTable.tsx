@@ -32,6 +32,7 @@ type ParticipantRow = {
   received_at: string | null;
   is_test: boolean;
   prizes: { rank: number; name: string } | null;
+  companions?: { name: string; team: string | null; position: string | null; phone: string }[];
 };
 
 const FILTERS = [
@@ -230,7 +231,14 @@ export function ParticipantsTable({
                       <td className="whitespace-nowrap py-2 pr-3 text-neutral-500">
                         {new Date(r.created_at).toLocaleString("ko-KR")}
                       </td>
-                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-700">{r.name}</td>
+                      <td className="whitespace-nowrap py-2 pr-3 text-neutral-700">
+                        {r.name}
+                        {!!r.companions?.length && (
+                          <span className="ml-1.5 rounded bg-sh-blue/10 px-1.5 py-0.5 text-[10px] font-bold text-sh-blue">
+                            +{r.companions.length}
+                          </span>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap py-2 pr-3 text-neutral-500">
                         <span className="text-neutral-700">{r.company || "-"}</span>
                         <span className="text-neutral-400"> · {optionLabel(JOB_ROLE_OPTIONS, r.job_role) || "-"}</span>
@@ -331,6 +339,27 @@ export function ParticipantsTable({
                               <div className="mt-0.5 text-neutral-700">{r.hq_location_other || "-"}</div>
                             </div>
                           </div>
+                          {!!r.companions?.length && (
+                            <div className="mt-4">
+                              <div className="text-[12.5px] font-semibold text-neutral-400">
+                                동반자 ({r.companions.length}명)
+                              </div>
+                              <div className="mt-1.5 flex flex-col gap-1">
+                                {r.companions.map((c, i) => (
+                                  <div key={i} className="text-[12.5px] text-neutral-700">
+                                    {c.name}
+                                    {(c.team || c.position) && (
+                                      <span className="text-neutral-400">
+                                        {" "}
+                                        ({[c.team, c.position].filter(Boolean).join("·")})
+                                      </span>
+                                    )}
+                                    <span className="text-neutral-400"> · {c.phone}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )}

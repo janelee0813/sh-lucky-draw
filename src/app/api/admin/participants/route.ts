@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("participants")
     .select(
-      "id, ticket_number, name, company, job_role, rnd_dept, rnd_dept_name, rnd_relocation_plan, hq_location, hq_location_other, phone, email, survey_answer_1, survey_answer_2, created_at, drawn_at, prize_id, received, received_at, is_test, prizes(rank, name)",
+      "id, ticket_number, name, company, job_role, rnd_dept, rnd_dept_name, rnd_relocation_plan, hq_location, hq_location_other, phone, email, survey_answer_1, survey_answer_2, created_at, drawn_at, prize_id, received, received_at, is_test, prizes(rank, name), companions(name, team, position, phone)",
       { count: "exact" }
     )
     .order("ticket_number", { ascending: false });

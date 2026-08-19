@@ -37,6 +37,16 @@ export interface Participant {
   received_at: string | null;
 }
 
+export interface Companion {
+  id: string;
+  participant_id: string;
+  name: string;
+  team: string | null;
+  position: string | null;
+  phone: string;
+  created_at: string;
+}
+
 export interface DrawLog {
   id: string;
   participant_id: string;

@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import { requireAdminResponse } from "@/lib/auth/guard";
 import { formatTicketNumber } from "@/lib/utils/ticket-number";
+import { formatCompanions } from "@/lib/utils/companions";
 import {
   HQ_LOCATION_OPTIONS,
   JOB_ROLE_OPTIONS,
@@ -20,21 +21,37 @@ export async function GET() {
   const supabase = getSupabaseServiceClient();
 
   const selectCols =
-    "ticket_number, created_at, name, company, job_role, rnd_dept, rnd_dept_name, rnd_relocation_plan, hq_location, hq_location_other, phone, email, survey_answer_1, survey_answer_2, drawn_at, received, received_at, is_test, prize_id";
+    "id, ticket_number, created_at, name, company, job_role, rnd_dept, rnd_dept_name, rnd_relocation_plan, hq_location, hq_location_other, phone, email, survey_answer_1, survey_answer_2, drawn_at, received, received_at, is_test, prize_id";
 
-  const [{ data: settings }, { data: liveParticipants }, { data: livePrizes }, { data: archivedParticipants }, { data: archivedPrizes }] =
-    await Promise.all([
-      supabase.from("event_settings").select("current_round").eq("id", 1).maybeSingle(),
-      supabase.from("participants").select(selectCols),
-      supabase.from("prizes").select("id, rank, name"),
-      supabase.from("participants_archive").select(`${selectCols}, archived_round`),
-      supabase.from("prizes_archive").select("id, rank, name"),
-    ]);
+  const [
+    { data: settings },
+    { data: liveParticipants },
+    { data: livePrizes },
+    { data: liveCompanions },
+    { data: archivedParticipants },
+    { data: archivedPrizes },
+    { data: archivedCompanions },
+  ] = await Promise.all([
+    supabase.from("event_settings").select("current_round").eq("id", 1).maybeSingle(),
+    supabase.from("participants").select(selectCols),
+    supabase.from("prizes").select("id, rank, name"),
+    supabase.from("companions").select("participant_id, name, team, position, phone"),
+    supabase.from("participants_archive").select(`${selectCols}, archived_round`),
+    supabase.from("prizes_archive").select("id, rank, name"),
+    supabase.from("companions_archive").select("participant_id, name, team, position, phone"),
+  ]);
 
   const currentRound = settings?.current_round ?? 1;
   const prizeMap = new Map<string, { rank: number; name: string }>();
   for (const p of [...(livePrizes ?? []), ...(archivedPrizes ?? [])]) {
     prizeMap.set(p.id, { rank: p.rank, name: p.name });
+  }
+
+  const companionsMap = new Map<string, { name: string; team: string | null; position: string | null; phone: string }[]>();
+  for (const c of [...(liveCompanions ?? []), ...(archivedCompanions ?? [])]) {
+    const list = companionsMap.get(c.participant_id) ?? [];
+    list.push({ name: c.name, team: c.team, position: c.position, phone: c.phone });
+    companionsMap.set(c.participant_id, list);
   }
 
   const combined = [
@@ -68,6 +85,7 @@ export async function GET() {
       추첨시간: p.drawn_at ? new Date(p.drawn_at).toLocaleString("ko-KR") : "",
       상품수령여부: p.received ? "수령완료" : "미수령",
       상품수령시간: p.received_at ? new Date(p.received_at).toLocaleString("ko-KR") : "",
+      동반자: formatCompanions(companionsMap.get(p.id)),
       테스트데이터: p.is_test ? "TEST" : "",
     };
   });
@@ -77,7 +95,7 @@ export async function GET() {
     { wch: 8 }, { wch: 10 }, { wch: 20 }, { wch: 12 }, { wch: 18 }, { wch: 14 },
     { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 22 }, { wch: 15 },
     { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 10 }, { wch: 10 },
-    { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 20 }, { wch: 10 },
+    { wch: 20 }, { wch: 20 }, { wch: 40 }, { wch: 12 },
   ];
 
   const workbook = XLSX.utils.book_new();

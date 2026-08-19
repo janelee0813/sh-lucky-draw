@@ -133,7 +133,7 @@ export function AdminDashboard() {
                   href="/api/admin/stats/export"
                   className="whitespace-nowrap rounded-lg bg-sh-blue px-4 py-2 text-[13px] font-bold text-white"
                 >
-                  통계 Excel 다운로드
+                  Excel 다운로드
                 </a>
               </div>
               <div ref={dashboardImage.ref} className="flex flex-col gap-6 bg-neutral-50 p-1">

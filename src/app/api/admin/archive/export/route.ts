@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import { requireAdminResponse } from "@/lib/auth/guard";
 import { formatTicketNumber } from "@/lib/utils/ticket-number";
+import { formatCompanions } from "@/lib/utils/companions";
 import {
   HQ_LOCATION_OPTIONS,
   JOB_ROLE_OPTIONS,
@@ -22,12 +23,13 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseServiceClient();
 
-  const [{ data: archivedPrizes }, { data, error }] = await Promise.all([
+  const [{ data: archivedPrizes }, { data: archivedCompanions }, { data, error }] = await Promise.all([
     supabase.from("prizes_archive").select("id, rank, name").eq("archived_round", round),
+    supabase.from("companions_archive").select("participant_id, name, team, position, phone").eq("archived_round", round),
     supabase
       .from("participants_archive")
       .select(
-        "ticket_number, created_at, name, company, job_role, rnd_dept, rnd_dept_name, rnd_relocation_plan, hq_location, hq_location_other, phone, email, survey_answer_1, survey_answer_2, drawn_at, received, received_at, is_test, prize_id"
+        "id, ticket_number, created_at, name, company, job_role, rnd_dept, rnd_dept_name, rnd_relocation_plan, hq_location, hq_location_other, phone, email, survey_answer_1, survey_answer_2, drawn_at, received, received_at, is_test, prize_id"
       )
       .eq("archived_round", round)
       .order("ticket_number", { ascending: true }),
@@ -39,6 +41,12 @@ export async function GET(req: NextRequest) {
   }
 
   const prizeMap = new Map((archivedPrizes ?? []).map((p) => [p.id, { rank: p.rank, name: p.name }]));
+  const companionsMap = new Map<string, { name: string; team: string | null; position: string | null; phone: string }[]>();
+  for (const c of archivedCompanions ?? []) {
+    const list = companionsMap.get(c.participant_id) ?? [];
+    list.push({ name: c.name, team: c.team, position: c.position, phone: c.phone });
+    companionsMap.set(c.participant_id, list);
+  }
 
   const rows = (data ?? []).map((p) => {
     const prize = p.prize_id ? prizeMap.get(p.prize_id) : null;
@@ -65,6 +73,7 @@ export async function GET(req: NextRequest) {
       추첨시간: p.drawn_at ? new Date(p.drawn_at).toLocaleString("ko-KR") : "",
       상품수령여부: p.received ? "수령완료" : "미수령",
       상품수령시간: p.received_at ? new Date(p.received_at).toLocaleString("ko-KR") : "",
+      동반자: formatCompanions(companionsMap.get(p.id)),
       테스트데이터: p.is_test ? "TEST" : "",
     };
   });
@@ -74,7 +83,7 @@ export async function GET(req: NextRequest) {
     { wch: 10 }, { wch: 20 }, { wch: 12 }, { wch: 18 }, { wch: 14 },
     { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 22 }, { wch: 15 },
     { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 10 }, { wch: 10 },
-    { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 20 }, { wch: 10 },
+    { wch: 20 }, { wch: 20 }, { wch: 40 }, { wch: 12 },
   ];
 
   const workbook = XLSX.utils.book_new();

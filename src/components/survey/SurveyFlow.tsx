@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { SURVEY_QUESTIONS, SURVEY_UI_TEXT, type Lang } from "@/lib/config/survey-questions";
 import { ProgressBar } from "./ProgressBar";
 import { StepQuestion } from "./StepQuestion";
-import { ParticipantInfoStep, type ParticipantInfo } from "./ParticipantInfoStep";
+import { ParticipantInfoStep, isCompanionValid, type CompanionInfo, type ParticipantInfo } from "./ParticipantInfoStep";
 import { ConsentStep } from "./ConsentStep";
 
 type Phase = "loading" | "closed" | "intro" | "questions" | "info" | "consent" | "submitting" | "error";
@@ -30,6 +30,7 @@ export function SurveyFlow() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [info, setInfo] = useState<ParticipantInfo>(EMPTY_INFO);
+  const [companions, setCompanions] = useState<CompanionInfo[]>([]);
   const [consent, setConsent] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [existingTicket, setExistingTicket] = useState<string | null>(null);
@@ -106,7 +107,9 @@ export function SurveyFlow() {
 
     const hqValid = info.hqLocation !== "etc" || info.hqLocationOther.trim().length > 0;
 
-    return basicsValid && rndValid && hqValid;
+    const companionsValid = companions.every(isCompanionValid);
+
+    return basicsValid && rndValid && hqValid && companionsValid;
   }
 
   async function handleSubmit() {
@@ -131,6 +134,12 @@ export function SurveyFlow() {
           survey_answer_1: answers.survey_answer_1,
           survey_answer_2: answers.survey_answer_2,
           privacy_consent: true,
+          companions: companions.map((c) => ({
+            name: c.name.trim(),
+            team: c.team.trim(),
+            position: c.position.trim(),
+            phone: c.phone.trim(),
+          })),
         }),
       });
       const data = await res.json();
@@ -281,7 +290,14 @@ export function SurveyFlow() {
             />
           )}
           {phase === "info" && (
-            <ParticipantInfoStep key="info" info={info} onChange={setInfo} lang={lang} />
+            <ParticipantInfoStep
+              key="info"
+              info={info}
+              onChange={setInfo}
+              companions={companions}
+              onCompanionsChange={setCompanions}
+              lang={lang}
+            />
           )}
           {(phase === "consent" || phase === "submitting" || phase === "error") && (
             <div key="consent-wrap" className="flex flex-col gap-6">

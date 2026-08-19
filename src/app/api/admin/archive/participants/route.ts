@@ -26,6 +26,18 @@ export async function GET(req: NextRequest) {
 
   const prizeMap = new Map((archivedPrizes ?? []).map((p) => [p.id, { rank: p.rank, name: p.name }]));
 
+  const { data: archivedCompanions } = await supabase
+    .from("companions_archive")
+    .select("participant_id, name, team, position, phone")
+    .eq("archived_round", round);
+
+  const companionsMap = new Map<string, { name: string; team: string | null; position: string | null; phone: string }[]>();
+  for (const c of archivedCompanions ?? []) {
+    const list = companionsMap.get(c.participant_id) ?? [];
+    list.push({ name: c.name, team: c.team, position: c.position, phone: c.phone });
+    companionsMap.set(c.participant_id, list);
+  }
+
   let query = supabase
     .from("participants_archive")
     .select(
@@ -70,6 +82,7 @@ export async function GET(req: NextRequest) {
   const participants = (data ?? []).map((p) => ({
     ...p,
     prizes: p.prize_id ? prizeMap.get(p.prize_id) ?? null : null,
+    companions: companionsMap.get(p.id) ?? [],
   }));
 
   return NextResponse.json({ participants, total: count ?? 0, page, pageSize });
