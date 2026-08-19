@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { SURVEY_QUESTIONS } from "@/lib/config/survey-questions";
+import { SURVEY_QUESTIONS, SURVEY_UI_TEXT, type Lang } from "@/lib/config/survey-questions";
 import { ProgressBar } from "./ProgressBar";
 import { StepQuestion } from "./StepQuestion";
 import { ParticipantInfoStep, type ParticipantInfo } from "./ParticipantInfoStep";
@@ -33,6 +33,8 @@ export function SurveyFlow() {
   const [consent, setConsent] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [existingTicket, setExistingTicket] = useState<string | null>(null);
+  const [lang, setLang] = useState<Lang>("ko");
+  const t = SURVEY_UI_TEXT;
 
   const totalSteps = SURVEY_QUESTIONS.length + 2; // 질문들 + 정보입력 + 동의
 
@@ -139,7 +141,7 @@ export function SurveyFlow() {
             data.existingTicketNumber ? String(data.existingTicketNumber).padStart(4, "0") : null
           );
         }
-        setErrorMessage(data.message || "오류가 발생했습니다. 다시 시도해주세요.");
+        setErrorMessage(errorMessageForCode(data.error, lang) || data.message || t.errorGeneric[lang]);
         setPhase("error");
         return;
       }
@@ -147,8 +149,23 @@ export function SurveyFlow() {
       const ticketNumber = String(data.ticketNumber).padStart(4, "0");
       router.push(`/ticket/${ticketNumber}`);
     } catch {
-      setErrorMessage("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+      setErrorMessage(t.errorNetwork[lang]);
       setPhase("error");
+    }
+  }
+
+  function errorMessageForCode(code: string | undefined, lang: Lang): string | null {
+    switch (code) {
+      case "EVENT_FULL":
+        return t.errorEventFull[lang];
+      case "DUPLICATE_PHONE":
+        return t.errorDuplicatePhone[lang];
+      case "INVALID_PHONE":
+        return t.errorInvalidPhone[lang];
+      case "INVALID_EMAIL":
+        return t.errorInvalidEmail[lang];
+      default:
+        return null;
     }
   }
 
@@ -160,17 +177,25 @@ export function SurveyFlow() {
     );
   }
 
+  function LanguageToggle() {
+    return (
+      <button
+        type="button"
+        onClick={() => setLang((l) => (l === "ko" ? "en" : "ko"))}
+        className="shrink-0 rounded-full border border-neutral-200 px-3 py-1.5 text-[11px] font-bold tracking-widest text-neutral-500 transition-transform active:scale-95"
+      >
+        {t.langToggle[lang]}
+      </button>
+    );
+  }
+
   if (phase === "closed") {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
         <span className="text-[13px] font-bold tracking-widest text-sh-blue">SH · LUCKY DRAW</span>
-        <h1 className="text-2xl font-extrabold text-neutral-900">참여가 마감되었습니다</h1>
-        <p className="text-[14px] leading-relaxed text-neutral-500">
-          준비된 모든 응모권이 소진되어
-          <br />
-          더 이상 설문 참여를 받고 있지 않습니다.
-          <br />
-          방문해주셔서 감사합니다.
+        <h1 className="text-2xl font-extrabold text-neutral-900">{t.closedTitle[lang]}</h1>
+        <p className="text-[14px] leading-relaxed text-neutral-500 whitespace-pre-line">
+          {t.closedBody[lang]}
         </p>
       </div>
     );
@@ -179,25 +204,24 @@ export function SurveyFlow() {
   if (phase === "intro") {
     return (
       <div className="flex h-full flex-col justify-between px-6 pb-8 pt-10">
-        <div>
-          <div className="text-[13px] font-extrabold tracking-widest text-sh-blue">
-            SH 서울주택도시개발공사
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[13px] font-extrabold tracking-widest text-sh-blue">
+              SH 서울주택도시개발공사
+            </div>
+            <div className="mt-1 text-[11px] font-semibold tracking-widest text-neutral-400">
+              EVENT · LUCKY DRAW
+            </div>
           </div>
-          <div className="mt-1 text-[11px] font-semibold tracking-widest text-neutral-400">
-            EVENT · LUCKY DRAW
-          </div>
+          <LanguageToggle />
         </div>
 
         <div className="flex flex-col gap-4">
-          <h1 className="text-[28px] leading-[1.3] font-extrabold text-neutral-900">
-            설문에 참여하고
-            <br />
-            LUCKY DRAW에 도전하세요.
+          <h1 className="text-[28px] leading-[1.3] font-extrabold text-neutral-900 whitespace-pre-line">
+            {t.introHeading[lang]}
           </h1>
-          <p className="text-[14px] leading-relaxed text-neutral-500">
-            간단한 설문을 완료하시면
-            <br />
-            꽝 없는 이벤트 응모권을 드립니다.
+          <p className="text-[14px] leading-relaxed text-neutral-500 whitespace-pre-line">
+            {t.introDesc[lang]}
           </p>
           <div className="mt-2 inline-flex w-fit items-center gap-2 rounded-full bg-sh-blue/10 px-3 py-1.5 text-[12px] font-bold text-sh-blue">
             NO BLANK · 100% WIN
@@ -209,7 +233,7 @@ export function SurveyFlow() {
           onClick={() => setPhase("questions")}
           className="w-full rounded-2xl bg-sh-blue py-4 text-center text-[16px] font-bold text-white shadow-lg shadow-sh-blue/20 active:scale-[0.98] transition-transform"
         >
-          설문 참여하기
+          {t.introButton[lang]}
         </button>
       </div>
     );
@@ -222,7 +246,7 @@ export function SurveyFlow() {
           <button
             type="button"
             onClick={handleBack}
-            aria-label="이전 단계로"
+            aria-label={t.backAriaLabel[lang]}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-neutral-200 text-neutral-500 transition-transform active:scale-95"
           >
             <svg
@@ -242,6 +266,7 @@ export function SurveyFlow() {
         <div className="flex-1">
           <ProgressBar step={currentStepNumber()} total={totalSteps} />
         </div>
+        {phase !== "submitting" && <LanguageToggle />}
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar">
@@ -252,14 +277,15 @@ export function SurveyFlow() {
               question={SURVEY_QUESTIONS[questionIndex]}
               value={answers[SURVEY_QUESTIONS[questionIndex].key] ?? null}
               onSelect={handleSelectAnswer}
+              lang={lang}
             />
           )}
           {phase === "info" && (
-            <ParticipantInfoStep key="info" info={info} onChange={setInfo} />
+            <ParticipantInfoStep key="info" info={info} onChange={setInfo} lang={lang} />
           )}
           {(phase === "consent" || phase === "submitting" || phase === "error") && (
             <div key="consent-wrap" className="flex flex-col gap-6">
-              <ConsentStep consent={consent} onChange={setConsent} />
+              <ConsentStep consent={consent} onChange={setConsent} lang={lang} />
               {errorMessage && (
                 <div className="rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-600">
                   {errorMessage}
@@ -269,7 +295,7 @@ export function SurveyFlow() {
                       onClick={() => router.push(`/ticket/${existingTicket}`)}
                       className="mt-2 block font-bold underline"
                     >
-                      기존 응모권({existingTicket}) 확인하기
+                      {t.existingTicketButton[lang]} ({existingTicket})
                     </button>
                   )}
                 </div>
@@ -287,7 +313,7 @@ export function SurveyFlow() {
             onClick={() => setPhase("consent")}
             className="w-full rounded-2xl bg-sh-blue py-4 text-center text-[16px] font-bold text-white disabled:opacity-30 transition-opacity active:scale-[0.98]"
           >
-            다음
+            {t.nextButton[lang]}
           </button>
         )}
         {(phase === "consent" || phase === "error") && (
@@ -297,7 +323,7 @@ export function SurveyFlow() {
             onClick={handleSubmit}
             className="w-full rounded-2xl bg-sh-blue py-4 text-center text-[16px] font-bold text-white disabled:opacity-30 transition-opacity active:scale-[0.98]"
           >
-            응모권 발급받기
+            {t.submitButton[lang]}
           </button>
         )}
         {phase === "submitting" && (
@@ -305,7 +331,7 @@ export function SurveyFlow() {
             disabled
             className="w-full rounded-2xl bg-sh-blue/60 py-4 text-center text-[16px] font-bold text-white"
           >
-            응모권을 발급하고 있습니다...
+            {t.submittingButton[lang]}
           </button>
         )}
       </div>

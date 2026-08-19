@@ -1,17 +1,21 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { SurveyQuestion } from "@/lib/config/survey-questions";
+import { optionLabelForLang, type Lang, type SurveyQuestion } from "@/lib/config/survey-questions";
 
 export function StepQuestion({
   question,
   value,
   onSelect,
+  lang,
 }: {
   question: SurveyQuestion;
   value: string | null;
   onSelect: (value: string) => void;
+  lang: Lang;
 }) {
+  const notice = lang === "en" ? question.noticeEn : question.notice;
+  const title = lang === "en" ? question.titleEn : question.title;
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -21,13 +25,13 @@ export function StepQuestion({
       className="flex flex-col gap-6"
     >
       <div className="flex flex-col gap-4">
-        {question.notice && (
+        {notice && (
           <p className="rounded-xl border border-sh-blue/25 border-l-4 border-l-sh-blue bg-sh-blue/5 px-4 py-3.5 text-[15px] font-semibold leading-relaxed text-neutral-700">
-            {question.notice}
+            {notice}
           </p>
         )}
         <h2 className="text-[22px] leading-[1.4] font-bold text-neutral-900 whitespace-pre-line">
-          {question.title}
+          {title}
         </h2>
       </div>
       <div className="flex flex-col gap-3">
@@ -47,7 +51,7 @@ export function StepQuestion({
                   : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"
               }`}
             >
-              {opt.label}
+              {optionLabelForLang(opt, lang)}
             </motion.button>
           );
         })}

@@ -1,15 +1,22 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { PRIVACY_CONSENT_TEXT } from "@/lib/config/survey-questions";
+import { PRIVACY_CONSENT_TEXT, SURVEY_UI_TEXT, type Lang } from "@/lib/config/survey-questions";
 
 export function ConsentStep({
   consent,
   onChange,
+  lang,
 }: {
   consent: boolean;
   onChange: (v: boolean) => void;
+  lang: Lang;
 }) {
+  const title = lang === "en" ? PRIVACY_CONSENT_TEXT.titleEn : PRIVACY_CONSENT_TEXT.title;
+  const body = lang === "en" ? PRIVACY_CONSENT_TEXT.bodyEn : PRIVACY_CONSENT_TEXT.body;
+  const checkboxLabel =
+    lang === "en" ? PRIVACY_CONSENT_TEXT.checkboxLabelEn : PRIVACY_CONSENT_TEXT.checkboxLabel;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -18,14 +25,14 @@ export function ConsentStep({
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="flex flex-col gap-6"
     >
-      <h2 className="text-[22px] leading-[1.4] font-bold text-neutral-900">
-        마지막으로,{"\n"}약관에 동의해주세요.
+      <h2 className="text-[22px] leading-[1.4] font-bold text-neutral-900 whitespace-pre-line">
+        {SURVEY_UI_TEXT.consentHeading[lang]}
       </h2>
 
       <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-        <p className="text-[13px] font-semibold text-neutral-700 mb-2">{PRIVACY_CONSENT_TEXT.title}</p>
+        <p className="text-[13px] font-semibold text-neutral-700 mb-2">{title}</p>
         <p className="text-[12px] leading-relaxed text-neutral-500 whitespace-pre-line max-h-40 overflow-y-auto">
-          {PRIVACY_CONSENT_TEXT.body}
+          {body}
         </p>
       </div>
 
@@ -43,9 +50,7 @@ export function ConsentStep({
         >
           {consent ? "✓" : ""}
         </span>
-        <span className="text-[14px] font-medium text-neutral-800">
-          {PRIVACY_CONSENT_TEXT.checkboxLabel}
-        </span>
+        <span className="text-[14px] font-medium text-neutral-800">{checkboxLabel}</span>
       </button>
     </motion.div>
   );

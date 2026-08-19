@@ -8,6 +8,9 @@ import {
   PARTICIPANT_FIELDS,
   RND_DEPT_OPTIONS,
   RND_RELOCATION_OPTIONS,
+  SURVEY_UI_TEXT,
+  optionLabelForLang,
+  type Lang,
   type SurveyOption,
 } from "@/lib/config/survey-questions";
 
@@ -65,10 +68,12 @@ function OptionGroup({
   options,
   value,
   onChange,
+  lang,
 }: {
   options: SurveyOption[];
   value: string;
   onChange: (v: string) => void;
+  lang: Lang;
 }) {
   return (
     <div className="grid grid-cols-2 gap-2">
@@ -85,7 +90,7 @@ function OptionGroup({
                 : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"
             }`}
           >
-            {opt.label}
+            {optionLabelForLang(opt, lang)}
           </button>
         );
       })}
@@ -96,13 +101,16 @@ function OptionGroup({
 export function ParticipantInfoStep({
   info,
   onChange,
+  lang,
 }: {
   info: ParticipantInfo;
   onChange: (info: ParticipantInfo) => void;
+  lang: Lang;
 }) {
   function set<K extends keyof ParticipantInfo>(key: K, value: ParticipantInfo[K]) {
     onChange({ ...info, [key]: value });
   }
+  const t = SURVEY_UI_TEXT;
 
   return (
     <motion.div
@@ -112,18 +120,18 @@ export function ParticipantInfoStep({
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="flex flex-col gap-8"
     >
-      <h2 className="text-[22px] leading-[1.4] font-bold text-neutral-900">
-        참여자 정보를{"\n"}입력해주세요.
+      <h2 className="text-[22px] leading-[1.4] font-bold text-neutral-900 whitespace-pre-line">
+        {t.infoHeading[lang]}
       </h2>
 
       {/* 1. 성함 / 연락처 / 이메일 */}
       <div className="flex flex-col gap-4">
-        <SectionTitle>귀하의 성함과 연락처를 입력해 주세요.</SectionTitle>
+        <SectionTitle>{t.infoSection1[lang]}</SectionTitle>
         {PARTICIPANT_FIELDS.map((field) => (
           <TextField
             key={field.key}
-            label={field.label}
-            placeholder={field.placeholder}
+            label={lang === "en" ? field.labelEn : field.label}
+            placeholder={lang === "en" ? field.placeholderEn : field.placeholder}
             type={field.type}
             required={field.required}
             value={info[field.key]}
@@ -134,10 +142,10 @@ export function ParticipantInfoStep({
 
       {/* 2. 기업명 + 직무 분야 */}
       <div className="flex flex-col gap-4">
-        <SectionTitle>현재 소속되신 기업명과 본인의 업무(직무) 분야는 무엇인가요?</SectionTitle>
+        <SectionTitle>{t.infoSection2[lang]}</SectionTitle>
         <TextField
-          label="기업명"
-          placeholder="OO 주식회사"
+          label={t.companyLabel[lang]}
+          placeholder={t.companyPlaceholder[lang]}
           type="text"
           required
           value={info.company}
@@ -145,18 +153,28 @@ export function ParticipantInfoStep({
         />
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] font-semibold text-neutral-500">
-            직무 <span className="text-sh-blue ml-1">*</span>
+            {t.jobRoleLabel[lang]} <span className="text-sh-blue ml-1">*</span>
           </label>
-          <OptionGroup options={JOB_ROLE_OPTIONS} value={info.jobRole} onChange={(v) => set("jobRole", v)} />
+          <OptionGroup
+            options={JOB_ROLE_OPTIONS}
+            value={info.jobRole}
+            onChange={(v) => set("jobRole", v)}
+            lang={lang}
+          />
         </div>
       </div>
 
       {/* 3. R&D 전담 부서 보유 여부 */}
       <div className="flex flex-col gap-4">
         <SectionTitle>
-          귀사(소속 기업)에 기업부설연구소 또는{"\n"}연구개발(R&D) 전담 부서가 있습니까?
+          <span className="whitespace-pre-line">{t.infoSection3[lang]}</span>
         </SectionTitle>
-        <OptionGroup options={RND_DEPT_OPTIONS} value={info.rndDept} onChange={(v) => set("rndDept", v)} />
+        <OptionGroup
+          options={RND_DEPT_OPTIONS}
+          value={info.rndDept}
+          onChange={(v) => set("rndDept", v)}
+          lang={lang}
+        />
 
         <AnimatePresence initial={false}>
           {info.rndDept === "has" && (
@@ -168,8 +186,8 @@ export function ParticipantInfoStep({
               className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-neutral-100 bg-neutral-50 p-4"
             >
               <TextField
-                label="부서명 / 연구소명"
-                placeholder="예: OO기술연구소"
+                label={t.rndDeptNameLabel[lang]}
+                placeholder={t.rndDeptNamePlaceholder[lang]}
                 type="text"
                 required
                 value={info.rndDeptName}
@@ -177,13 +195,14 @@ export function ParticipantInfoStep({
               />
               <div className="flex flex-col gap-1.5">
                 <label className="text-[13px] font-semibold text-neutral-500">
-                  해당 연구소(부서)의 이전 또는 확장 계획이 있습니까?
+                  {t.rndRelocationLabel[lang]}
                   <span className="text-sh-blue ml-1">*</span>
                 </label>
                 <OptionGroup
                   options={RND_RELOCATION_OPTIONS}
                   value={info.rndRelocationPlan}
                   onChange={(v) => set("rndRelocationPlan", v)}
+                  lang={lang}
                 />
               </div>
             </motion.div>
@@ -193,11 +212,12 @@ export function ParticipantInfoStep({
 
       {/* 4. 본사/연구실 위치 */}
       <div className="flex flex-col gap-4">
-        <SectionTitle>귀사(소속 기업)의 본사/연구실 위치는 어디십니까?</SectionTitle>
+        <SectionTitle>{t.infoSection4[lang]}</SectionTitle>
         <OptionGroup
           options={HQ_LOCATION_OPTIONS}
           value={info.hqLocation}
           onChange={(v) => set("hqLocation", v)}
+          lang={lang}
         />
 
         <AnimatePresence initial={false}>
@@ -210,8 +230,8 @@ export function ParticipantInfoStep({
               className="overflow-hidden"
             >
               <TextField
-                label="지역 직접 입력"
-                placeholder="예: 인천"
+                label={t.hqLocationOtherLabel[lang]}
+                placeholder={t.hqLocationOtherPlaceholder[lang]}
                 type="text"
                 required
                 value={info.hqLocationOther}
