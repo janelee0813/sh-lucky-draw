@@ -27,20 +27,24 @@ type DetailedStats = {
   };
 };
 
-function RoundComparisonTable({
+// 라운드 구분 없이 전체 합계 기준으로 응답 분포를 보여준다.
+function BreakdownTable({
   title,
   options,
   data,
-  rounds,
 }: {
   title: string;
   options: SurveyOption[];
   data: Record<number, CountMap> | undefined;
-  rounds: number[];
 }) {
   if (!data) return null;
-  const roundTotals = rounds.map((r) => Object.values(data[r] ?? {}).reduce((a, b) => a + b, 0));
-  const grandTotal = roundTotals.reduce((a, b) => a + b, 0);
+  const combined: CountMap = {};
+  for (const roundCounts of Object.values(data)) {
+    for (const [value, count] of Object.entries(roundCounts)) {
+      combined[value] = (combined[value] ?? 0) + count;
+    }
+  }
+  const total = Object.values(combined).reduce((a, b) => a + b, 0);
 
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-5">
@@ -50,38 +54,26 @@ function RoundComparisonTable({
           <thead>
             <tr className="border-b border-neutral-100 text-neutral-400">
               <th className="whitespace-nowrap py-1.5 pr-3 font-semibold">항목</th>
-              {rounds.map((r) => (
-                <th key={r} className="whitespace-nowrap py-1.5 pr-3 text-right font-semibold">
-                  ROUND {r}
-                </th>
-              ))}
-              <th className="whitespace-nowrap py-1.5 pr-3 text-right font-semibold">합계</th>
+              <th className="whitespace-nowrap py-1.5 pr-3 text-right font-semibold">응답수</th>
+              <th className="whitespace-nowrap py-1.5 pr-3 text-right font-semibold">비율</th>
             </tr>
           </thead>
           <tbody>
             {options.map((opt) => {
-              const rowVals = rounds.map((r) => data[r]?.[opt.value] ?? 0);
-              const sum = rowVals.reduce((a, b) => a + b, 0);
+              const count = combined[opt.value] ?? 0;
+              const pct = total > 0 ? Math.round((count / total) * 100) : 0;
               return (
                 <tr key={opt.value} className="border-b border-neutral-50">
                   <td className="whitespace-nowrap py-1.5 pr-3 text-neutral-700">{opt.label}</td>
-                  {rowVals.map((v, i) => (
-                    <td key={i} className="whitespace-nowrap py-1.5 pr-3 text-right text-neutral-600">
-                      {v}
-                    </td>
-                  ))}
-                  <td className="whitespace-nowrap py-1.5 pr-3 text-right font-bold text-sh-blue">{sum}</td>
+                  <td className="whitespace-nowrap py-1.5 pr-3 text-right font-bold text-sh-blue">{count}</td>
+                  <td className="whitespace-nowrap py-1.5 pr-3 text-right text-neutral-500">{pct}%</td>
                 </tr>
               );
             })}
             <tr className="text-neutral-400">
               <td className="whitespace-nowrap py-1.5 pr-3 font-semibold">합계</td>
-              {roundTotals.map((v, i) => (
-                <td key={i} className="whitespace-nowrap py-1.5 pr-3 text-right font-semibold">
-                  {v}
-                </td>
-              ))}
-              <td className="whitespace-nowrap py-1.5 pr-3 text-right font-semibold">{grandTotal}</td>
+              <td className="whitespace-nowrap py-1.5 pr-3 text-right font-semibold">{total}</td>
+              <td className="whitespace-nowrap py-1.5 pr-3 text-right font-semibold">100%</td>
             </tr>
           </tbody>
         </table>
@@ -175,40 +167,31 @@ export function StatsPage() {
           <div>
             <div className="mb-3 flex items-center gap-2">
               <span className="rounded-full bg-sh-blue/10 px-2.5 py-1 text-[11px] font-bold text-sh-blue">
-                라운드별 비교
+                전체 응답 현황
               </span>
-              <p className="text-[12px] text-neutral-400">회차가 지날수록 응답 경향이 바뀌는지 비교합니다.</p>
+              <p className="text-[12px] text-neutral-400">1~{Math.max(...stats.rounds, 1)}차 전체 합계 기준입니다.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <RoundComparisonTable
+              <BreakdownTable
                 title={SURVEY_QUESTIONS[0].title.replace(/\n/g, " ")}
                 options={SURVEY_QUESTIONS[0].options}
                 data={stats.byRound.survey_answer_1}
-                rounds={stats.rounds}
               />
-              <RoundComparisonTable
+              <BreakdownTable
                 title={SURVEY_QUESTIONS[1].title.replace(/\n/g, " ")}
                 options={SURVEY_QUESTIONS[1].options}
                 data={stats.byRound.survey_answer_2}
-                rounds={stats.rounds}
               />
-              <RoundComparisonTable
-                title="직무 분야"
-                options={JOB_ROLE_OPTIONS}
-                data={stats.byRound.job_role}
-                rounds={stats.rounds}
-              />
-              <RoundComparisonTable
+              <BreakdownTable title="직무 분야" options={JOB_ROLE_OPTIONS} data={stats.byRound.job_role} />
+              <BreakdownTable
                 title="기업부설연구소 / R&D 전담부서 보유 여부"
                 options={RND_DEPT_OPTIONS}
                 data={stats.byRound.rnd_dept}
-                rounds={stats.rounds}
               />
-              <RoundComparisonTable
+              <BreakdownTable
                 title="본사 / 연구실 위치"
                 options={HQ_LOCATION_OPTIONS}
                 data={stats.byRound.hq_location}
-                rounds={stats.rounds}
               />
             </div>
           </div>

@@ -66,27 +66,34 @@ export async function GET() {
 
   const workbook = XLSX.utils.book_new();
 
-  function addRoundSheet(sheetName: string, options: SurveyOption[], key: keyof SurveyRow) {
+  // 라운드 구분 없이 전체 합계 기준으로 응답수/비율을 담은 시트를 만든다.
+  function addBreakdownSheet(sheetName: string, options: SurveyOption[], key: keyof SurveyRow) {
     const data = byRound(key);
-    const header = ["항목", ...rounds.map((r) => `${r}차`), "합계"];
-    const aoa: (string | number)[][] = [header];
-    for (const opt of options) {
-      const rowVals = rounds.map((r) => data[r][opt.value] ?? 0);
-      const sum = rowVals.reduce((a, b) => a + b, 0);
-      aoa.push([opt.label, ...rowVals, sum]);
+    const combined: Record<string, number> = {};
+    for (const round of rounds) {
+      for (const [value, count] of Object.entries(data[round] ?? {})) {
+        combined[value] = (combined[value] ?? 0) + count;
+      }
     }
-    const totalRow = rounds.map((r) => Object.values(data[r]).reduce((a, b) => a + b, 0));
-    aoa.push(["합계", ...totalRow, totalRow.reduce((a, b) => a + b, 0)]);
+    const total = Object.values(combined).reduce((a, b) => a + b, 0);
+
+    const aoa: (string | number)[][] = [["항목", "응답수", "비율"]];
+    for (const opt of options) {
+      const count = combined[opt.value] ?? 0;
+      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      aoa.push([opt.label, count, `${pct}%`]);
+    }
+    aoa.push(["합계", total, "100%"]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!cols"] = [{ wch: 34 }, ...rounds.map(() => ({ wch: 10 })), { wch: 10 }];
+    ws["!cols"] = [{ wch: 34 }, { wch: 10 }, { wch: 10 }];
     XLSX.utils.book_append_sheet(workbook, ws, sheetName);
   }
 
-  addRoundSheet("Q1 라운드별", SURVEY_QUESTIONS[0].options, "survey_answer_1");
-  addRoundSheet("Q2 라운드별", SURVEY_QUESTIONS[1].options, "survey_answer_2");
-  addRoundSheet("직무 라운드별", JOB_ROLE_OPTIONS, "job_role");
-  addRoundSheet("RD보유 라운드별", RND_DEPT_OPTIONS, "rnd_dept");
-  addRoundSheet("본사위치 라운드별", HQ_LOCATION_OPTIONS, "hq_location");
+  addBreakdownSheet("Q1 응답현황", SURVEY_QUESTIONS[0].options, "survey_answer_1");
+  addBreakdownSheet("Q2 응답현황", SURVEY_QUESTIONS[1].options, "survey_answer_2");
+  addBreakdownSheet("직무 응답현황", JOB_ROLE_OPTIONS, "job_role");
+  addBreakdownSheet("RD보유 응답현황", RND_DEPT_OPTIONS, "rnd_dept");
+  addBreakdownSheet("본사위치 응답현황", HQ_LOCATION_OPTIONS, "hq_location");
 
   function addCrossTabSheet(
     sheetName: string,
