@@ -20,6 +20,7 @@ const WHEEL_RADIUS =
 const HUB_RADIUS = WHEEL_RADIUS * 0.17;
 
 const SPIN_SOUND_SRC = "/sounds/roulette.wav";
+const SPIN_SOUND_GAIN = 2; // 기본 볼륨(최대 1.0)의 2배로 증폭
 
 const RANKS = [1, 2, 3, 4, 5] as const;
 const SLICE_ANGLE = (Math.PI * 2) / RANKS.length;
@@ -88,13 +89,34 @@ export const RouletteCanvas = forwardRef<
   const settleM0Ref = useRef(1);
   const rafRef = useRef<number>(0);
   const spinSoundRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     prizesRef.current = prizes;
   }, [prizes]);
 
   useEffect(() => {
-    spinSoundRef.current = new Audio(SPIN_SOUND_SRC);
+    const audio = new Audio(SPIN_SOUND_SRC);
+    spinSoundRef.current = audio;
+
+    // HTMLAudioElement.volume은 최대 1.0(100%)까지만 지원하므로,
+    // Web Audio API의 GainNode로 그 이상 증폭한다.
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (AudioContextClass) {
+      const audioCtx = new AudioContextClass();
+      const source = audioCtx.createMediaElementSource(audio);
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.value = SPIN_SOUND_GAIN;
+      source.connect(gainNode).connect(audioCtx.destination);
+      audioCtxRef.current = audioCtx;
+    }
+
+    return () => {
+      audioCtxRef.current?.close();
+    };
   }, []);
 
   useImperativeHandle(ref, () => ({
@@ -106,6 +128,9 @@ export const RouletteCanvas = forwardRef<
 
       const sound = spinSoundRef.current;
       if (sound) {
+        if (audioCtxRef.current?.state === "suspended") {
+          audioCtxRef.current.resume().catch(() => {});
+        }
         sound.currentTime = 0;
         sound.play().catch(() => {});
       }
