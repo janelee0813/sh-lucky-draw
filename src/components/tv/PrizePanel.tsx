@@ -14,6 +14,12 @@ export function PrizePanel({
   drawClosed: boolean;
   onOpenDraw: () => void;
 }) {
+  const topRankRemaining = prizes
+    .filter((p) => p.rank <= 4)
+    .reduce((sum, p) => sum + p.remaining_quantity, 0);
+  const topRankPercent =
+    totalRemaining > 0 ? Math.round((topRankRemaining / totalRemaining) * 100) : 0;
+
   return (
     <div className="absolute right-0 top-0 flex h-full w-[440px] flex-col justify-between border-l border-white/10 bg-white/[0.03] px-8 py-10 backdrop-blur-sm">
       <div>
@@ -75,6 +81,25 @@ export function PrizePanel({
             );
           })}
         </div>
+
+        {totalRemaining > 0 && (
+          <div className="mt-4 rounded-2xl border border-sh-cyan/30 bg-gradient-to-r from-sh-blue/20 to-sh-cyan/10 px-5 py-4">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[13px] font-bold tracking-widest text-white/70">
+                1~4등 당첨 확률
+              </span>
+              <span className="font-display text-[32px] font-black leading-none text-sh-cyan">
+                {topRankPercent}%
+              </span>
+            </div>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-sh-blue to-sh-cyan"
+                style={{ width: `${topRankPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <button
