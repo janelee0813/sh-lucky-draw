@@ -45,7 +45,7 @@ export function StepQuestion({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.05 * i }}
-              className={`w-full text-left rounded-2xl border px-5 py-4 text-[15px] font-medium transition-all active:scale-[0.98] ${
+              className={`w-full text-left rounded-2xl border px-5 py-4 text-[15px] font-medium transition-[color,background-color,border-color,transform] active:scale-[0.98] ${
                 selected
                   ? "border-sh-blue bg-sh-blue text-white shadow-lg shadow-sh-blue/20"
                   : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"

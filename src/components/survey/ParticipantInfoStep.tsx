@@ -103,7 +103,7 @@ function OptionGroup({
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
-            className={`rounded-xl border px-3.5 py-3 text-left text-[13.5px] font-medium leading-snug transition-all active:scale-[0.98] ${
+            className={`rounded-xl border px-3.5 py-3 text-left text-[13.5px] font-medium leading-snug transition-[color,background-color,border-color,transform] active:scale-[0.98] ${
               selected
                 ? "border-sh-blue bg-sh-blue text-white shadow-md shadow-sh-blue/20"
                 : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"

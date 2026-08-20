@@ -11,8 +11,8 @@ export function ProgressBar({ step, total }: { step: number; total: number }) {
       </div>
       <div className="h-1 w-full rounded-full bg-neutral-200 overflow-hidden">
         <div
-          className="h-full rounded-full bg-sh-blue transition-all duration-500 ease-out"
-          style={{ width: `${pct}%` }}
+          className="h-full w-full origin-left rounded-full bg-sh-blue transition-transform duration-500 ease-out"
+          style={{ transform: `scaleX(${pct / 100})` }}
         />
       </div>
     </div>
