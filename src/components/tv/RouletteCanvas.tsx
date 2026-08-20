@@ -19,7 +19,7 @@ const WHEEL_RADIUS =
   Math.min(STAGE_RIGHT - STAGE_LEFT, STAGE_BOTTOM - STAGE_TOP) / 2 - 70;
 const HUB_RADIUS = WHEEL_RADIUS * 0.17;
 
-const SPIN_SOUND_SRC = "/sounds/roulette.wav";
+const SPIN_SOUND_SRC = "/sounds/roulette.mp3";
 const SPIN_SOUND_GAIN = 2; // 기본 볼륨(최대 1.0)의 2배로 증폭
 
 const RANKS = [1, 2, 3, 4, 5] as const;
