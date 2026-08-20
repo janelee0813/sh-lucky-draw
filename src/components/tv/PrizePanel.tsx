@@ -42,7 +42,7 @@ export function PrizePanel({
               rel="noopener noreferrer"
               className="rounded-full border border-white/15 px-2.5 py-1 text-[9px] font-medium text-white/40 hover:text-white/70"
             >
-              사용자 화면
+              설문참여
             </a>
           </div>
         </div>
