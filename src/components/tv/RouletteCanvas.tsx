@@ -19,6 +19,8 @@ const WHEEL_RADIUS =
   Math.min(STAGE_RIGHT - STAGE_LEFT, STAGE_BOTTOM - STAGE_TOP) / 2 - 70;
 const HUB_RADIUS = WHEEL_RADIUS * 0.17;
 
+const SPIN_SOUND_SRC = "/sounds/roulette.wav";
+
 const RANKS = [1, 2, 3, 4, 5] as const;
 const SLICE_ANGLE = (Math.PI * 2) / RANKS.length;
 // 0번 슬라이스 중심이 정확히 12시 방향(포인터 위치)에 오도록 하는 기준 시작각
@@ -85,10 +87,15 @@ export const RouletteCanvas = forwardRef<
   const landedRankRef = useRef<number | null>(null);
   const settleM0Ref = useRef(1);
   const rafRef = useRef<number>(0);
+  const spinSoundRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     prizesRef.current = prizes;
   }, [prizes]);
+
+  useEffect(() => {
+    spinSoundRef.current = new Audio(SPIN_SOUND_SRC);
+  }, []);
 
   useImperativeHandle(ref, () => ({
     startDraw(getWinningRank: () => Promise<number | null>) {
@@ -96,6 +103,12 @@ export const RouletteCanvas = forwardRef<
       phaseStartRef.current = performance.now();
       winningRankRef.current = null;
       landedRankRef.current = null;
+
+      const sound = spinSoundRef.current;
+      if (sound) {
+        sound.currentTime = 0;
+        sound.play().catch(() => {});
+      }
 
       getWinningRank().then((rank) => {
         winningRankRef.current = rank;
