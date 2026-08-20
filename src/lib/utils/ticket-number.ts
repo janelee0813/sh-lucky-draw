@@ -31,7 +31,7 @@ export function isValidEmail(email: string): boolean {
 }
 
 // 개인 메일 도메인 차단 목록 - 기업용(업무용) 이메일만 접수하기 위함
-export const BLOCKED_EMAIL_DOMAINS = ["naver.com", "daum.net", "hanmail.net", "gmail.com"];
+export const BLOCKED_EMAIL_DOMAINS = ["naver.com", "daum.net", "hanmail.net", "gmail.com", "nate.com"];
 
 export function isBlockedEmailDomain(email: string): boolean {
   const domain = email.trim().toLowerCase().split("@")[1] ?? "";
