@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
-import { isValidEmail, isValidPhone, normalizePhone } from "@/lib/utils/ticket-number";
+import {
+  isBlockedEmailDomain,
+  isValidEmail,
+  isValidPhone,
+  normalizePhone,
+} from "@/lib/utils/ticket-number";
 
 const companionSchema = z.object({
   name: z.string().trim().min(1).max(50),
@@ -48,6 +53,15 @@ export async function POST(req: NextRequest) {
   if (!isValidEmail(body.email)) {
     return NextResponse.json(
       { error: "INVALID_EMAIL", message: "이메일 형식을 확인해주세요." },
+      { status: 400 }
+    );
+  }
+  if (isBlockedEmailDomain(body.email)) {
+    return NextResponse.json(
+      {
+        error: "BLOCKED_EMAIL_DOMAIN",
+        message: "기업용(업무용) 이메일 주소만 입력 가능합니다.",
+      },
       { status: 400 }
     );
   }

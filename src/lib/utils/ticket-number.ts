@@ -29,3 +29,11 @@ export function normalizePhone(phone: string): string {
 export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
+
+// 개인 메일 도메인 차단 목록 - 기업용(업무용) 이메일만 접수하기 위함
+export const BLOCKED_EMAIL_DOMAINS = ["naver.com", "daum.net", "hanmail.net", "google.com"];
+
+export function isBlockedEmailDomain(email: string): boolean {
+  const domain = email.trim().toLowerCase().split("@")[1] ?? "";
+  return BLOCKED_EMAIL_DOMAINS.includes(domain);
+}

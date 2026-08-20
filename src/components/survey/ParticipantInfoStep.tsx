@@ -13,6 +13,7 @@ import {
   type Lang,
   type SurveyOption,
 } from "@/lib/config/survey-questions";
+import { isBlockedEmailDomain } from "@/lib/utils/ticket-number";
 
 export type ParticipantInfo = {
   name: string;
@@ -57,6 +58,8 @@ function TextField({
   value,
   onChange,
   required,
+  hint,
+  errorText,
 }: {
   label: string;
   placeholder: string;
@@ -64,6 +67,8 @@ function TextField({
   value: string;
   onChange: (v: string) => void;
   required?: boolean;
+  hint?: string;
+  errorText?: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -77,8 +82,15 @@ function TextField({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-[15px] text-neutral-900 outline-none focus:border-sh-blue focus:bg-white transition-colors"
+        className={`w-full rounded-xl border bg-neutral-50 px-4 py-3.5 text-[15px] text-neutral-900 outline-none focus:bg-white transition-colors ${
+          errorText ? "border-red-400 focus:border-red-400" : "border-neutral-200 focus:border-sh-blue"
+        }`}
       />
+      {errorText ? (
+        <p className="text-[12px] text-red-500">{errorText}</p>
+      ) : (
+        hint && <p className="text-[12px] text-neutral-400">{hint}</p>
+      )}
     </div>
   );
 }
@@ -169,6 +181,12 @@ export function ParticipantInfoStep({
             required={field.required}
             value={info[field.key]}
             onChange={(v) => set(field.key, v)}
+            hint={field.key === "email" ? t.emailHint[lang] : undefined}
+            errorText={
+              field.key === "email" && isBlockedEmailDomain(info.email)
+                ? t.errorBlockedEmailDomain[lang]
+                : undefined
+            }
           />
         ))}
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { SURVEY_QUESTIONS, SURVEY_UI_TEXT, type Lang } from "@/lib/config/survey-questions";
+import { isBlockedEmailDomain } from "@/lib/utils/ticket-number";
 import { ProgressBar } from "./ProgressBar";
 import { StepQuestion } from "./StepQuestion";
 import { ParticipantInfoStep, isCompanionValid, type CompanionInfo, type ParticipantInfo } from "./ParticipantInfoStep";
@@ -96,6 +97,7 @@ export function SurveyFlow() {
       info.name.trim().length > 0 &&
       info.phone.trim().length > 0 &&
       info.email.trim().length > 0 &&
+      !isBlockedEmailDomain(info.email) &&
       info.company.trim().length > 0 &&
       info.jobRole.length > 0 &&
       info.rndDept.length > 0 &&
@@ -173,6 +175,8 @@ export function SurveyFlow() {
         return t.errorInvalidPhone[lang];
       case "INVALID_EMAIL":
         return t.errorInvalidEmail[lang];
+      case "BLOCKED_EMAIL_DOMAIN":
+        return t.errorBlockedEmailDomain[lang];
       default:
         return null;
     }

@@ -245,5 +245,13 @@ export const SURVEY_UI_TEXT = {
     en: "Please check your phone number format.",
   },
   errorInvalidEmail: { ko: "이메일 형식을 확인해주세요.", en: "Please check your email format." },
+  errorBlockedEmailDomain: {
+    ko: "기업용(업무용) 이메일 주소만 입력 가능합니다.",
+    en: "Only business (work) email addresses are accepted.",
+  },
+  emailHint: {
+    ko: "기업용(업무용) 이메일 주소만 입력 가능합니다.",
+    en: "Only business (work) email addresses are accepted.",
+  },
   langToggle: { ko: "ENGLISH", en: "한국어" },
 };
