@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { RANK_COLOR_HEX } from "@/lib/config/settings";
 import type { PublicPrizeStatus } from "@/types/database";
 
-const CANVAS_WIDTH = 1480;
+const CANVAS_WIDTH = 1320;
 const CANVAS_HEIGHT = 1080;
 
 // BallCanvas와 동일한 상자 영역을 공유해, 전환 버튼을 눌러도 무대 프레임이 그대로 유지된다.

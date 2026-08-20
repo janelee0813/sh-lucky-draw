@@ -3,6 +3,11 @@
 import { RANK_COLOR_HEX } from "@/lib/config/settings";
 import type { PublicPrizeStatus } from "@/types/database";
 
+const PRIZE_VALUE_LABEL: Partial<Record<1 | 2 | 3 | 4 | 5, string>> = {
+  2: "6.5만원 상당",
+  3: "3.5만원 상당",
+};
+
 export function PrizePanel({
   prizes,
   totalRemaining,
@@ -21,7 +26,7 @@ export function PrizePanel({
     totalRemaining > 0 ? Math.round((topRankRemaining / totalRemaining) * 100) : 0;
 
   return (
-    <div className="absolute right-0 top-0 flex h-full w-[440px] flex-col justify-between border-l border-white/10 bg-white/[0.03] px-8 py-10 backdrop-blur-sm">
+    <div className="absolute right-0 top-0 flex h-full w-[600px] flex-col justify-between border-l border-white/10 bg-white/[0.03] px-8 py-10 backdrop-blur-sm">
       <div>
         <div className="flex items-start justify-between">
           <div>
@@ -59,6 +64,7 @@ export function PrizePanel({
         <div className="mt-6 flex flex-col gap-3">
           {prizes.map((p) => {
             const color = RANK_COLOR_HEX[p.rank as 1 | 2 | 3 | 4 | 5];
+            const valueLabel = PRIZE_VALUE_LABEL[p.rank as 1 | 2 | 3 | 4 | 5];
             return (
               <div
                 key={p.id}
@@ -68,11 +74,18 @@ export function PrizePanel({
                     : "border-white/10 bg-white/[0.03]"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 whitespace-nowrap">
                   <span className="text-[18px] font-extrabold" style={{ color }}>
                     {p.rank}등
                   </span>
-                  <span className="text-[19px] font-bold text-white">{p.name}</span>
+                  <span className="text-[19px] font-bold text-white">
+                    {p.name}
+                    {valueLabel && (
+                      <span className="ml-1 text-[16px] font-bold text-white/50">
+                        ({valueLabel})
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <span className="font-display text-[32px] font-black leading-none" style={{ color }}>
                   {p.remaining_quantity}
@@ -83,16 +96,16 @@ export function PrizePanel({
         </div>
 
         {totalRemaining > 0 && (
-          <div className="mt-4 rounded-2xl border border-sh-cyan/30 bg-gradient-to-r from-sh-blue/20 to-sh-cyan/10 px-5 py-4">
+          <div className="mt-4 rounded-2xl border border-sh-cyan/30 bg-gradient-to-r from-sh-blue/20 to-sh-cyan/10 px-5 py-5">
             <div className="flex items-baseline justify-between">
-              <span className="text-[13px] font-bold tracking-widest text-white/70">
+              <span className="text-[15px] font-bold tracking-widest text-white/70">
                 1~4등 당첨 확률
               </span>
-              <span className="font-display text-[32px] font-black leading-none text-sh-cyan">
+              <span className="font-display text-[56px] font-black leading-none text-sh-cyan">
                 {topRankPercent}%
               </span>
             </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/10">
+            <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-sh-blue to-sh-cyan"
                 style={{ width: `${topRankPercent}%` }}

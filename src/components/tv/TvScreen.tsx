@@ -235,7 +235,7 @@ export function TvScreen() {
           type="button"
           onClick={() => setDisplayMode((m) => (m === "ball" ? "roulette" : "ball"))}
           className="absolute z-20 rounded-full border border-white/15 bg-black/30 px-2.5 py-1 text-[9px] font-medium text-white/40 backdrop-blur-sm transition-colors hover:border-white/30 hover:text-white/80"
-          style={{ top: 162, right: 508 }}
+          style={{ top: 162, right: 668 }}
         >
           전환
         </button>

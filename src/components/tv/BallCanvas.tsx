@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { BALL_SIZE, RANK_COLOR_HEX, VISUAL_BALL_COUNT } from "@/lib/config/settings";
 import type { PublicPrizeStatus } from "@/types/database";
 
-const CANVAS_WIDTH = 1480;
+const CANVAS_WIDTH = 1320;
 const CANVAS_HEIGHT = 1080;
 
 // 구슬이 떠다니는 영역을 라운드 사각형으로 한정한다 (로고/타이틀이 한 줄로 축소되어 상단 여백이 줄었다).
